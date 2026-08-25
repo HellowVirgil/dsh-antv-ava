@@ -1,0 +1,9 @@
+node_modules/
+.pnpm-store/
+.npmrc
+lib/
+*.tsbuildinfo
+*.tgz
+coverage/
+.DS_Store
+.e2e-artifacts/

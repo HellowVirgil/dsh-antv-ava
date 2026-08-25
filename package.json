@@ -1,0 +1,108 @@
+{
+  "name": "dsh-antv-ava",
+  "version": "0.1.0",
+  "description": "AntV AVA visual analytics plugin for DeepSeek Harness: turn text-derived structured data into recommended charts and automatic insights.",
+  "author": "HellowVirgil",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HellowVirgil/dsh-antv-ava.git"
+  },
+  "homepage": "https://github.com/HellowVirgil/dsh-antv-ava#readme",
+  "bugs": {
+    "url": "https://github.com/HellowVirgil/dsh-antv-ava/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/plugin/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/plugin/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "src",
+    "SKILL.md",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "cordis.patch.yml",
+    "tsconfig.json",
+    "tsdown.config.ts"
+  ],
+  "scripts": {
+    "build": "rm -rf lib && tsc -p tsconfig.json && tsdown",
+    "test": "vitest run",
+    "check": "rm -rf lib && tsc -p tsconfig.json && vitest run && tsdown",
+    "verify:pack": "node scripts/verify-pack.mjs",
+    "prepack": "node scripts/prepack.mjs"
+  },
+  "dependencies": {
+    "@antv/ava": "3.4.1",
+    "@antv/g2": "^5.4.8",
+    "react": "^18.3.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.8",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.8",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-scope": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.8",
+    "@testing-library/dom": "^10.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^22.19.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "jsdom": "^25.0.0",
+    "react-dom": "^18.3.1",
+    "tsdown": "^0.22.2",
+    "typescript": "^5.9.2",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "antv",
+    "ava",
+    "visual-analytics",
+    "chart-recommendation",
+    "insight",
+    "generative-ui",
+    "visualization"
+  ],
+  "license": "MIT",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=10 <12"
+  }
+}

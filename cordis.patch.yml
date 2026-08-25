@@ -1,0 +1,4 @@
+# Insert the host half and browser client into the selected DSH profile.
+- insert:
+    - id: antv-ava
+      name: dsh-antv-ava
