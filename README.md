@@ -5,7 +5,7 @@
 <h1 align="center">dsh-antv-ava</h1>
 
 <p align="center">
-  Turn quantitative facts in text into recommended charts and automatic insights with <a href="https://github.com/antvis/AVA">AntV AVA</a>, directly inside DeepSeek Harness (DSH) replies.
+  Let DeepSeek Harness automatically present data-heavy answers as streaming narrative text, AntV charts, or a natural combination of both.
 </p>
 
 <p align="center">
@@ -15,66 +15,151 @@
   <a href="./LICENSE"><img alt="MIT License" src="https://img.shields.io/npm/l/dsh-antv-ava"></a>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/AntV_AVA-3.4.1-1677ff" alt="AntV AVA 3.4.1">
+  <img src="https://img.shields.io/badge/streaming-supported-16a34a" alt="Streaming supported">
+  <img src="https://img.shields.io/badge/theme-light%20%7C%20dark-8b5cf6" alt="Light and dark themes">
+</p>
+
 ## Preview
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="dsh-antv-ava recommending and rendering a quarterly revenue trend chart inside DSH" width="100%">
+  <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="dsh-antv-ava rendering data interpretation and an AntV chart inside a DSH conversation" width="100%">
 </p>
 
-<p align="center">
-  <sub>Actual DSH rendering: AVA recommends a line chart and G2 renders it while the model provides a text interpretation.</sub>
-</p>
+Narrative text and charts flow directly with the model reply instead of appearing in separate cards. Text can render progressively while the model is generating, and charts join the same conversation once their data is complete.
 
-The DSH model interprets the source text and emits a streaming `ava` fence. The plugin parses complete rows as they arrive, asks AVA to recommend a chart and detect statistical patterns, then renders the result with AntV G2.
+## Core features
 
-````markdown
-```ava
-ava
-title Quarterly revenue trend
-purpose Trend
-language en-US
-fields
-  - id quarter
-    label Quarter
-    type temporal
-    role dimension
-  - id revenue
-    label Revenue ($k)
-    type quantitative
-    role measure
-data
-  - quarter Q1
-    revenue 128
-  - quarter Q2
-    revenue 164
-  - quarter Q3
-    revenue 191
-```
-````
-
-## Features
-
-- Uses AVA Advisor to recommend a chart from the extracted data and analysis purpose
-- Uses AVA Insight to detect trends, outliers, change points, majority, correlation, and low variance
-- Progressively re-analyzes and renders complete data rows while the model streams
-- Renders the recommended specification with AntV G2 and supports PNG export
-- Displays concise bilingual insight summaries and the AVA recommendation score
-- Uses the DSH `fence-registry` when available, with a DOM fallback for older hosts
-- Lazy-loads the 1.6 MB AVA/G2 engine without blocking the initial DSH page load
-- Limits fields, rows, source size, and blocks executable markup and private-network resources
-- Includes an optional `antv-ava` Skill for more reliable fact extraction and DSL generation
+- Automatic presentation selection: the model chooses NTV, a chart, or both based on the question and data.
+- Streaming data interpretation: metrics, changes, shares, category details, and conclusions render phrase by phrase.
+- AntV charts: AVA Advisor / Insight recommends a visualization and AntV G2 renders it.
+- Conversation-native design: inherits DSH typography, font size, line height, color, width, and Markdown spacing.
+- Live theme adaptation: chart axes, labels, and grid lines update when switching between light and dark themes without a page refresh.
+- Semantic data expression: highlighted metrics, direction arrows, absolute changes, rates, contributions, and proportion micro charts.
+- Lazy loading: the AVA/G2 chart engine loads only when an answer contains a chart.
+- Safe parsing: source-size limits and blocking for executable markup, dangerous URLs, and private-network resources.
 
 ## Installation
-
-Once published, install the package directly into a DSH profile:
 
 ```bash
 dsh plugin --profile web add dsh-antv-ava
 ```
 
-The plugin itself injects the required output contract, so a separate Skill installation is not required. Restart `dsh web` and hard-refresh the browser after installation.
+Restart `dsh web` and reload the page after installation. The plugin injects the required output contract automatically, so regular users do not need to install a separate Skill or write DSL by hand.
 
-### Install from source
+## Usage
+
+Ask naturally after installation.
+
+### Interpret data
+
+```text
+Interpret the following business data and provide concise, easy-to-scan conclusions:
+Total orders reached 198M this month, up 7.05% year over year…
+```
+
+The model will usually return streaming NTV with emphasized metrics, changes, shares, and category conclusions.
+
+### Interpret and visualize
+
+```text
+Analyze the revenue change from Q1 to Q4 and choose an appropriate visualization:
+Q1 1.28M, Q2 1.64M, Q3 1.91M, Q4 2.26M.
+```
+
+When visual shape makes a trend or comparison easier to understand, the model combines narrative text with a chart.
+
+### Generate only a chart
+
+```text
+Plot the following data as a trend chart. Return only the chart: …
+```
+
+When explicitly requested, the model can return a chart without repeating the same information as narrative text.
+
+## Automatic output selection
+
+| Content | Typical result |
+| --- | --- |
+| KPIs, period-over-period changes, shares, category breakdowns, and conclusions | NTV |
+| Trends, comparisons, distributions, rankings, or compositions benefit from shape | NTV + Chart |
+| The user explicitly requests only a chart, or narrative adds no value | Chart |
+
+This selection is automatic; users do not need to understand the internal format.
+
+## Supported data expression
+
+NTV supports:
+
+- Primary and secondary metrics and dimension values
+- Time descriptions and trend conclusions
+- Absolute changes and change rates
+- Shares, contributions, and inline proportion micro charts
+- Headlines, heading levels 1–6, paragraphs, bullets, sections, and dividers
+
+Charts support common AVA analysis purposes:
+
+- Comparison
+- Trend
+- Distribution
+- Rank
+- Proportion
+- Composition
+
+## Optional Skill installation
+
+The plugin works on its own. Install the bundled Skill only when the agent environment discovers `~/.agents/skills` and complex data tasks need stricter guidance for fact preservation and presentation selection.
+
+```bash
+mkdir -p ~/.agents/skills/antv-ava
+cp SKILL.md ~/.agents/skills/antv-ava/SKILL.md
+```
+
+## Advanced: unified AVA format
+
+The model can emit `narrative`, `chart`, or both inside one `ava` fence:
+
+````markdown
+```ava
+ava
+language en-US
+narrative
+  headline Quarterly revenue continued to grow
+  paragraph
+    text Q4 revenue reached
+    metric-value 2.26M
+    text , up from Q1 by
+    ratio positive 76.6%
+chart
+  title Quarterly revenue trend
+  purpose Trend
+  fields
+    - id quarter
+      label Quarter
+      type categorical
+      role dimension
+    - id revenue
+      label Revenue (M)
+      type quantitative
+      role measure
+  data
+    - quarter Q1
+      revenue 1.28
+    - quarter Q4
+      revenue 2.26
+```
+````
+
+Legacy `ava ntv`, `ava chart`, and bare chart-style `ava` content remains renderable.
+
+## Scope
+
+Use the plugin for evidence-backed KPIs, business analysis, trends, shares, rankings, and category breakdowns. It does not invent values for visualization and never executes arbitrary HTML, SVG, or scripts emitted by the model.
+
+Processes, hierarchies, and roadmaps without meaningful numeric structure are better suited to an infographic plugin.
+
+## Install from source
 
 ```bash
 git clone https://github.com/HellowVirgil/dsh-antv-ava.git
@@ -84,43 +169,6 @@ pnpm run check
 dsh plugin --profile web add "link:$PWD"
 ```
 
-### Optional: Install the Skill
-
-Install the Skill only when the agent environment discovers `~/.agents/skills` and you want stronger guidance for extracting dimensions, measures, and supported facts from complex text.
-
-```bash
-mkdir -p ~/.agents/skills/antv-ava
-cp SKILL.md ~/.agents/skills/antv-ava/SKILL.md
-```
-
-Try this prompt in a new session:
-
-```text
-Use AVA to visualize and interpret these quarterly results: Q1 revenue was 128, Q2 was 164, Q3 was 191, and Q4 was 226.
-```
-
-The following browser console message confirms that the client is active:
-
-```text
-[dsh-antv-ava] client active; fence-channel=registry
-```
-
-## How it works
-
-1. The host plugin teaches the model a constrained, line-based `ava` DSL.
-2. The model converts supported quantitative statements into fields and rows; it must not invent missing values.
-3. The browser parser incrementally accepts complete rows and validates the source.
-4. AVA Advisor recommends a G2 specification, while AVA Insight extracts statistical patterns.
-5. G2 renders the chart; the plugin displays summaries, recommendation metadata, PNG export, and source copying.
-
-The plugin uses stable `@antv/ava@3.4.1`. AVA 4 is currently alpha and includes a different AI-native runtime; this plugin keeps LLM access inside DSH and does not require a separate model key.
-
-## Scope
-
-Best for text containing real quantities: trends, comparisons, rankings, proportions, distributions, and correlations.
-
-For qualitative roadmaps, hierarchies, or process diagrams without meaningful numbers, use an infographic renderer instead. The plugin deliberately refuses to invent numbers merely to make text chartable.
-
 ## Development
 
 ```bash
@@ -128,14 +176,6 @@ pnpm test
 pnpm build
 pnpm run verify:pack
 ```
-
-Main entry points:
-
-- `src/plugin/index.ts`: prompt injection and asset route
-- `src/client/ava-source.ts`: streaming DSL parser and validation
-- `src/client/AvaBlock.tsx`: chart UI, insights, and export
-- `src/client/asset-ava.ts`: lazy AVA Advisor, Insight, and G2 bundle
-- `src/client/dom-fence.tsx`: fallback for older DSH hosts
 
 ## License
 

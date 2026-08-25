@@ -5,6 +5,7 @@ import type { AvaDocument } from '../src/client/ava-source.ts'
 describe('AVA engine adapter', () => {
   it('recommends a renderable trend chart for quarterly text data', () => {
     const document: AvaDocument = {
+      mode: 'chart',
       title: '季度收入趋势',
       purpose: 'Trend',
       language: 'zh-CN',

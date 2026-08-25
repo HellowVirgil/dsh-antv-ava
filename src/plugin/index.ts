@@ -11,49 +11,68 @@ import { fileURLToPath } from 'node:url'
 
 export const AVA_SECTION_ORDER = 107
 
-export const AVA_SECTION_TEXT = `You can turn quantitative facts in text into an inline AntV AVA visual analysis by emitting one fenced block tagged \`ava\`. AVA recommends the chart and extracts data insights; the body uses this line-based DSL:
+export const AVA_SECTION_TEXT = `When quantitative content benefits from visual interpretation, emit one fenced block tagged \`ava\` and decide the useful presentation automatically. Do not ask the user to choose a mode and do not require an explicit mode keyword.
+
+Choose the contents by communication value:
+- Use \`narrative\` for KPI summaries, period-over-period changes, shares, ranked category breakdowns, or compact analytical reports where readable conclusions matter most.
+- Use both \`narrative\` and \`chart\` when a trend, distribution, comparison, ranking, correlation, or composition becomes materially clearer with visual shape. Put \`narrative\` first so completed phrase lines stream immediately; the chart appears after its fields and data are complete.
+- Use only \`chart\` when the user explicitly asks for a conventional chart or the chart itself is the answer and additional narrative would be redundant.
+
+The unified safe line-based DSL is:
 
 \`\`\`ava
 ava
-title AI 产品各阶段投入产出
-description 从需求文本中提取的阶段性数据
-purpose Comparison
 language zh-CN
-fields
-  - id stage
-    label 阶段
-    type categorical
-    role dimension
-  - id input
-    label 投入
-    type quantitative
-    role measure
-  - id output
-    label 产出
-    type quantitative
-    role measure
-data
-  - stage 调研
-    input 20
-    output 5
-  - stage 原型
-    input 45
-    output 32
-  - stage 上线
-    input 80
-    output 120
+narrative
+  headline 本月订单保持增长
+  paragraph
+    metric-name 订单总量
+    metric-value 1.98亿
+    text ，同比上月同期增加
+    delta positive 1,302.76万
+    text ，增长
+    ratio positive 7.05%
+  heading 2 品类结构
+  bullet
+    dimension 办公用品：
+    metric-value 1.59亿
+    text ，占比
+    proportion 80.47%
+chart
+  title 各品类订单规模
+  purpose Comparison
+  fields
+    - id category
+      label 品类
+      type categorical
+      role dimension
+    - id orders
+      label 订单量（万）
+      type quantitative
+      role measure
+  data
+    - category 办公用品
+      orders 15900
+    - category 家具
+      orders 3507.16
 \`\`\`
 
-Use it when the source text contains real comparable quantities, a time series, rankings, proportions, distributions, or correlations. First interpret the text, then encode only facts supported by it. Do not invent numbers merely to make a chart. Use ordinary prose or \`infographic\` for qualitative-only structure.
+The plugin infers the result from section presence: \`narrative\` only renders NTV, \`narrative\` plus \`chart\` renders both in one conversation-native flow, and \`chart\` only renders a chart. Narrative maps to AVA's NarrativeTextSpec and completed phrase lines render progressively while the model streams. Use concise ordinary prose outside the fence only when context does not belong in the visual answer.
 
-Rules:
-- The first body line is exactly \`ava\`; use exactly two spaces per nesting level.
-- Optional metadata: \`title\`, \`description\`, \`purpose\`, and \`language\`.
-- \`purpose\` is one of Comparison, Trend, Distribution, Rank, Proportion, or Composition.
-- Field ids use ASCII identifiers. Field types are categorical, quantitative, or temporal; roles are dimension or measure.
-- Use 2–12 fields and normally 3–50 rows. Quantitative values must be numbers without units; put units in field labels.
-- Preserve the user's language. Keep any explanation outside the fence short because the plugin displays AVA's chart recommendation and detected insights.
-- Never include secrets, executable markup, javascript/file URLs, localhost/private-network URLs, or facts not supported by the source text.`
+Narrative rules:
+- The first body line is \`ava\`. Top-level \`language\` is optional. Add a \`narrative\` section and indent its contents by two spaces.
+- Inside \`narrative\`, use optional \`headline\`, \`heading 1..6 <text>\`, \`paragraph\`, \`bullet\`, \`section\`, or \`divider\`.
+- Under a narrative \`paragraph\` or \`bullet\`, indent four spaces from the fence root and use one phrase per line: \`text\`, \`strong\`, \`metric-name\`, \`metric-value\`, \`other-value\`, \`dimension\`, \`time\`, \`contribution\`, \`proportion\`, \`trend\`, \`delta <positive|negative|equal>\`, or \`ratio <positive|negative|equal>\`.
+- Use \`metric-name\` for labels, \`metric-value\` for primary values, \`delta\` for absolute changes, \`ratio\` for change rates, and \`proportion\` for a displayed percentage with an inline share micro-visualization.
+- Assessment describes semantic direction, not desirability: growth/up is \`positive\`, decline/down is \`negative\`, unchanged is \`equal\`.
+- Preserve natural punctuation and spaces inside \`text\` phrases. Encode only facts supported by the source; never invent missing values.
+
+Chart rules:
+- Add a \`chart\` section and indent all existing chart statements by two spaces. It requires \`title\`, \`fields\`, and \`data\`; \`purpose\` is one of Comparison, Trend, Distribution, Rank, Proportion, or Composition.
+- Field ids are ASCII. Quantitative values are numbers without units. Do not repeat the same conclusion in both narrative and automatic chart insight text.
+- Preserve the user's language. Never include secrets, executable markup, javascript/file URLs, localhost/private-network URLs, or unsupported facts.
+
+Legacy \`ava ntv\` and \`ava chart\` documents remain renderable, but generate the unified \`ava\` structure above for new answers.`
 
 const ASSET_ROUTE_PATH = '/plugins/dsh-antv-ava/assets'
 

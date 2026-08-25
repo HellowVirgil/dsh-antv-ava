@@ -2,8 +2,25 @@
 
 ## 0.1.0
 
-- Add the `ava` fenced-block renderer for DSH registry and DOM fallback hosts.
-- Parse text-derived fields and data rows progressively while model output streams.
-- Use AntV AVA Advisor for chart recommendation and AVA Insight for automatic pattern extraction.
-- Render recommended specifications with AntV G2 and support PNG export and DSL copying.
-- Add prompt guidance, an optional Skill, safety limits, tests, and package verification.
+First public release of `dsh-antv-ava`.
+
+### Added
+
+- Automatically present data-heavy DSH answers as AVA narrative text, an AntV chart, or both.
+- Stream narrative phrases as they are generated, including metrics, changes, rates, shares, dimensions, headings, and lists.
+- Recommend charts with AVA Advisor / Insight and render them with AntV G2.
+- Export rendered charts as PNG and inspect or copy the generated AVA source.
+
+### User experience
+
+- Render narrative and charts directly in the conversation flow without a separate card or toolbar.
+- Inherit DSH typography, spacing, message width, and foreground colors.
+- Support light and dark themes, including live chart-theme updates without refreshing the page.
+- Load the AVA/G2 chart engine only when an answer contains a chart.
+
+### Compatibility and safety
+
+- Support both current DSH fence rendering and the DOM fallback used by older hosts.
+- Keep legacy `ava ntv`, `ava chart`, and bare chart-style `ava` documents renderable.
+- Validate source structure and enforce limits for source size, phrases, paragraphs, fields, and data rows.
+- Reject executable markup, dangerous URLs, and localhost or private-network resources.

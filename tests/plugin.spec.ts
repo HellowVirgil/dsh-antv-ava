@@ -11,17 +11,18 @@ async function createContext(): Promise<Context> {
 }
 
 describe('host plugin', () => {
-  it('teaches the ava fence, field schema, and supported purposes', async () => {
+  it('teaches the model to choose narrative, combined, or chart output automatically', async () => {
     const ctx = await createContext()
     const prompt = await ctx.systemPrompt.assemble({})
     const section = prompt.sections.find(item => item.name === 'antv-ava:fence')
     expect(section).toBeDefined()
     const text = typeof section?.text === 'string' ? section.text : ''
     expect(text).toContain('```ava')
-    for (const value of ['categorical', 'quantitative', 'dimension', 'measure', 'Comparison', 'Trend']) {
+    for (const value of ['Do not ask the user to choose a mode', 'narrative', 'chart', 'NarrativeTextSpec', 'metric-value', 'delta positive', 'proportion', 'quantitative', 'dimension', 'measure', 'Comparison', 'Trend']) {
       expect(text).toContain(value)
     }
-    expect(text).toContain('Do not invent numbers')
+    expect(text).toContain('narrative` plus `chart` renders both')
+    expect(text).toContain('never invent missing values')
   })
 
   it('registers the lazy asset route even when webServer binds later', async () => {

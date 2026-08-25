@@ -1,6 +1,21 @@
+import type {
+  BulletItemSpec,
+  EntityMetaData,
+  EntityType,
+  BulletsParagraphSpec,
+  HeadingParagraphSpec,
+  NarrativeTextSpec,
+  ParagraphSpec,
+  PhraseSpec,
+  StandardSectionSpec,
+  TextParagraphSpec,
+} from '@antv/ava'
+
 export const MAX_AVA_SOURCE_LENGTH = 120_000
 export const MAX_AVA_FIELDS = 12
 export const MAX_AVA_ROWS = 500
+export const MAX_AVA_NTV_PARAGRAPHS = 120
+export const MAX_AVA_NTV_PHRASES = 1_000
 
 export type AvaFieldType = 'categorical' | 'quantitative' | 'temporal'
 export type AvaFieldRole = 'dimension' | 'measure'
@@ -15,6 +30,7 @@ export interface AvaField {
 }
 
 export interface AvaDocument {
+  mode: 'chart'
   title: string
   description?: string | undefined
   purpose?: AvaPurpose | undefined
@@ -23,8 +39,22 @@ export interface AvaDocument {
   data: Array<Record<string, string | number>>
 }
 
+export interface AvaNtvDocument {
+  mode: 'ntv'
+  language: AvaLanguage
+  spec: NarrativeTextSpec
+}
+
+export interface AvaCombinedDocument {
+  mode: 'combined'
+  narrative: AvaNtvDocument
+  chart: AvaDocument
+}
+
+export type AvaRenderableDocument = AvaDocument | AvaNtvDocument | AvaCombinedDocument
+
 export type AvaParseResult =
-  | { ok: true; value: AvaDocument }
+  | { ok: true; value: AvaRenderableDocument }
   | { ok: false; reason?: string | undefined }
 
 const FIELD_ID = /^[A-Za-z][A-Za-z0-9_.-]*$/
@@ -76,8 +106,7 @@ function parseNumber(value: string): number | undefined {
   return Number.isFinite(number) ? number : undefined
 }
 
-/** Parse the model-authored, line-based AVA DSL without evaluating code or markup. */
-export function parseAvaSource(source: string, settled = false): AvaParseResult {
+function safeSource(source: string): AvaParseResult | undefined {
   if (source.length > MAX_AVA_SOURCE_LENGTH) {
     return { ok: false, reason: `内容超过 ${MAX_AVA_SOURCE_LENGTH.toLocaleString()} 字符限制` }
   }
@@ -87,12 +116,198 @@ export function parseAvaSource(source: string, settled = false): AvaParseResult 
   for (const pattern of PRIVATE_URL_PATTERNS) {
     if (pattern.test(source)) return { ok: false, reason: '不允许访问 localhost 或私有网络资源' }
   }
+  return undefined
+}
 
+function completeLines(source: string, settled: boolean): string[] {
   let lines = source.replaceAll('\r\n', '\n').split('\n')
   if (!settled && !source.endsWith('\n')) lines = lines.slice(0, -1)
   while (lines.length > 0 && lines.at(-1)?.trim() === '') lines.pop()
+  return lines
+}
+
+const ENTITY_COMMANDS: Record<string, EntityType> = {
+  'metric-name': 'metric_name',
+  'metric-value': 'metric_value',
+  'other-value': 'other_metric_value',
+  contribution: 'contribute_ratio',
+  dimension: 'dim_value',
+  time: 'time_desc',
+  proportion: 'proportion',
+  trend: 'trend_desc',
+}
+
+function entityPhrase(entityType: EntityType, value: string, metadata?: Partial<EntityMetaData>): PhraseSpec {
+  return {
+    type: 'entity',
+    value,
+    metadata: { entityType, ...metadata },
+  }
+}
+
+function isTextParagraph(paragraph: ParagraphSpec): paragraph is TextParagraphSpec {
+  return paragraph.type === 'normal'
+}
+
+function isBulletsParagraph(paragraph: ParagraphSpec): paragraph is BulletsParagraphSpec {
+  return paragraph.type === 'bullets'
+}
+
+function isHeadingParagraph(paragraph: ParagraphSpec): paragraph is HeadingParagraphSpec {
+  return typeof paragraph.type === 'string' && /^heading[1-6]$/.test(paragraph.type)
+}
+
+function proportionOrigin(value: string): number | undefined {
+  const parsed = parseNumber(value)
+  if (parsed === undefined) return undefined
+  return value.trim().endsWith('%') ? parsed / 100 : parsed
+}
+
+function phraseFromLine(line: string): PhraseSpec | undefined {
+  const body = line.slice(2)
+  const separator = body.indexOf(' ')
+  const command = separator < 0 ? body : body.slice(0, separator)
+  const value = separator < 0 ? '' : body.slice(separator + 1)
+  if (value.trim() === '') return undefined
+  if (command === 'text') return { type: 'text', value }
+  if (command === 'strong') return { type: 'text', value, bold: true }
+  if (command === 'delta' || command === 'ratio') {
+    const assessmentEnd = value.indexOf(' ')
+    if (assessmentEnd < 0) return undefined
+    const assessment = value.slice(0, assessmentEnd)
+    if (assessment !== 'positive' && assessment !== 'negative' && assessment !== 'equal') return undefined
+    const displayValue = value.slice(assessmentEnd + 1)
+    if (displayValue.trim() === '') return undefined
+    return entityPhrase(command === 'delta' ? 'delta_value' : 'ratio_value', displayValue, { assessment })
+  }
+  const entityType = ENTITY_COMMANDS[command]
+  if (entityType === undefined) return undefined
+  const origin = entityType === 'proportion' ? proportionOrigin(value) : undefined
+  return entityPhrase(entityType, value, origin === undefined ? undefined : { origin })
+}
+
+function parseAvaNtvSource(source: string, settled: boolean): AvaParseResult {
+  const lines = completeLines(source, settled)
   if (lines.length === 0) return fail('围栏内容为空', settled)
-  if (lines[0]?.trim().toLowerCase() !== 'ava') return fail('第一行必须是 ava', settled)
+  if (lines[0]?.trim().toLowerCase() !== 'ava ntv') return fail('NTV 第一行必须是 ava ntv', settled)
+
+  let language: AvaLanguage | undefined
+  let headline: NarrativeTextSpec['headline']
+  const sections: StandardSectionSpec[] = [{ paragraphs: [] }]
+  let currentSection = sections[0] as StandardSectionSpec
+  let currentPhrases: PhraseSpec[] | undefined
+  let phraseCount = 0
+  let paragraphCount = 0
+
+  const appendParagraph = (paragraph: ParagraphSpec): boolean => {
+    paragraphCount += 1
+    if (paragraphCount > MAX_AVA_NTV_PARAGRAPHS) return false
+    currentSection.paragraphs?.push(paragraph)
+    return true
+  }
+
+  for (const line of lines.slice(1)) {
+    if (line.trim() === '') continue
+    if (!line.startsWith(' ')) {
+      currentPhrases = undefined
+      const nextLanguage = metadataValue(line, 'language')
+      if (nextLanguage !== undefined) {
+        if (nextLanguage !== 'zh-CN' && nextLanguage !== 'en-US') return fail(`不支持的语言：${nextLanguage}`, settled)
+        language = nextLanguage
+        continue
+      }
+      const nextHeadline = metadataValue(line, 'headline')
+      if (nextHeadline !== undefined) {
+        if (nextHeadline === '') return fail('headline 不能为空', settled)
+        headline = { type: 'headline', phrases: [{ type: 'text', value: nextHeadline, bold: true }] }
+        continue
+      }
+      if (line === 'section') {
+        if ((currentSection.paragraphs?.length ?? 0) > 0) {
+          currentSection = { paragraphs: [] }
+          sections.push(currentSection)
+        }
+        continue
+      }
+      const heading = line.match(/^heading ([1-6]) (.+)$/)
+      if (heading !== null) {
+        const phrases: PhraseSpec[] = [{ type: 'text', value: heading[2] ?? '', bold: true }]
+        if (!appendParagraph({ type: `heading${heading[1]}` as `heading${1 | 2 | 3 | 4 | 5 | 6}`, phrases })) {
+          return { ok: false, reason: `NTV 段落数量不能超过 ${MAX_AVA_NTV_PARAGRAPHS}` }
+        }
+        continue
+      }
+      if (line === 'divider') {
+        if (!appendParagraph({ type: 'divider' })) {
+          return { ok: false, reason: `NTV 段落数量不能超过 ${MAX_AVA_NTV_PARAGRAPHS}` }
+        }
+        continue
+      }
+      if (line === 'paragraph') {
+        const paragraph: ParagraphSpec = { type: 'normal', phrases: [] }
+        if (!appendParagraph(paragraph)) return { ok: false, reason: `NTV 段落数量不能超过 ${MAX_AVA_NTV_PARAGRAPHS}` }
+        currentPhrases = paragraph.phrases
+        continue
+      }
+      if (line === 'bullet') {
+        const paragraphs = currentSection.paragraphs ?? []
+        let bullets = paragraphs.at(-1)
+        if (bullets === undefined || !isBulletsParagraph(bullets)) {
+          bullets = { type: 'bullets', isOrder: false, bullets: [] }
+          if (!appendParagraph(bullets)) return { ok: false, reason: `NTV 段落数量不能超过 ${MAX_AVA_NTV_PARAGRAPHS}` }
+        }
+        if (!isBulletsParagraph(bullets)) return fail('NTV bullet 结构无效', settled)
+        const item: BulletItemSpec = { type: 'bullet-item', phrases: [] }
+        bullets.bullets.push(item)
+        currentPhrases = item.phrases
+        continue
+      }
+      return fail(`无法识别的 NTV 语句：${line}`, settled)
+    }
+
+    if (!line.startsWith('  ') || line.startsWith('   ') || currentPhrases === undefined) {
+      return fail(`NTV 短语必须使用两个空格缩进并位于 paragraph 或 bullet 中：${line.trim()}`, settled)
+    }
+    const phrase = phraseFromLine(line)
+    if (phrase === undefined) return fail(`无法识别的 NTV 短语：${line.trim()}`, settled)
+    phraseCount += 1
+    if (phraseCount > MAX_AVA_NTV_PHRASES) return { ok: false, reason: `NTV 短语数量不能超过 ${MAX_AVA_NTV_PHRASES}` }
+    currentPhrases.push(phrase)
+  }
+
+  for (const section of sections) {
+    section.paragraphs = (section.paragraphs ?? []).filter(paragraph => {
+      if (isTextParagraph(paragraph)) return paragraph.phrases.length > 0
+      if (isBulletsParagraph(paragraph)) {
+        paragraph.bullets = paragraph.bullets.filter(item => item.phrases.length > 0)
+        return paragraph.bullets.length > 0
+      }
+      if (isHeadingParagraph(paragraph)) return paragraph.phrases.length > 0
+      return true
+    })
+  }
+  const completeSections = sections.filter(section => (section.paragraphs?.length ?? 0) > 0)
+  if (headline === undefined && completeSections.length === 0) return fail('NTV 至少需要一个完整短语', settled)
+  const inferredText = lines.slice(1).join('')
+  return {
+    ok: true,
+    value: {
+      mode: 'ntv',
+      language: language ?? inferLanguage(inferredText),
+      spec: {
+        ...(headline === undefined ? {} : { headline }),
+        ...(completeSections.length === 0 ? {} : { sections: completeSections }),
+      },
+    },
+  }
+}
+
+/** Parse the model-authored, line-based AVA DSL without evaluating code or markup. */
+function parseAvaChartSource(source: string, settled: boolean): AvaParseResult {
+  const lines = completeLines(source, settled)
+  if (lines.length === 0) return fail('围栏内容为空', settled)
+  const header = lines[0]?.trim().toLowerCase()
+  if (header !== 'ava' && header !== 'ava chart') return fail('图表第一行必须是 ava chart', settled)
 
   let title = ''
   let description: string | undefined
@@ -233,6 +448,7 @@ export function parseAvaSource(source: string, settled = false): AvaParseResult 
   return {
     ok: true,
     value: {
+      mode: 'chart',
       title,
       ...(description === undefined ? {} : { description }),
       ...(purpose === undefined ? {} : { purpose }),
@@ -241,4 +457,91 @@ export function parseAvaSource(source: string, settled = false): AvaParseResult 
       data,
     },
   }
+}
+
+type UnifiedSection = 'narrative' | 'chart'
+
+function parseUnifiedAvaSource(source: string, settled: boolean): AvaParseResult {
+  const lines = completeLines(source, settled)
+  if (lines.length === 0) return fail('围栏内容为空', settled)
+  if (lines[0]?.trim().toLowerCase() !== 'ava') return fail('统一 AVA 第一行必须是 ava', settled)
+
+  let language: AvaLanguage | undefined
+  let currentSection: UnifiedSection | undefined
+  const seen = new Set<UnifiedSection>()
+  const sectionLines: Record<UnifiedSection, string[]> = { narrative: [], chart: [] }
+
+  for (const line of lines.slice(1)) {
+    if (line.trim() === '') {
+      if (currentSection !== undefined) sectionLines[currentSection].push('')
+      continue
+    }
+    if (!line.startsWith(' ')) {
+      const normalized = line.trim().toLowerCase()
+      if (normalized === 'narrative' || normalized === 'chart') {
+        if (seen.has(normalized)) return fail(`不能重复声明 ${normalized} 区段`, settled)
+        currentSection = normalized
+        seen.add(normalized)
+        continue
+      }
+      const nextLanguage = metadataValue(line, 'language')
+      if (nextLanguage !== undefined) {
+        if (nextLanguage !== 'zh-CN' && nextLanguage !== 'en-US') return fail(`不支持的语言：${nextLanguage}`, settled)
+        language = nextLanguage
+        continue
+      }
+      return fail(`统一 AVA 只能包含 language、narrative 和 chart：${line}`, settled)
+    }
+    if (currentSection === undefined || !line.startsWith('  ')) {
+      return fail(`统一 AVA 区段内容必须使用至少两个空格缩进：${line.trim()}`, settled)
+    }
+    sectionLines[currentSection].push(line.slice(2))
+  }
+
+  if (seen.size === 0) return fail('统一 AVA 至少需要 narrative 或 chart 区段', settled)
+
+  const sectionSource = (header: 'ava ntv' | 'ava chart', section: UnifiedSection): string => {
+    const inheritedLanguage = language === undefined ? [] : [`language ${language}`]
+    return [header, ...inheritedLanguage, ...sectionLines[section]].join('\n')
+  }
+  const narrativeResult = seen.has('narrative')
+    ? parseAvaNtvSource(sectionSource('ava ntv', 'narrative'), settled)
+    : undefined
+  const chartResult = seen.has('chart')
+    ? parseAvaChartSource(sectionSource('ava chart', 'chart'), settled)
+    : undefined
+
+  if (settled && narrativeResult !== undefined && !narrativeResult.ok) {
+    return fail(`narrative 区段无效：${narrativeResult.reason ?? '内容不完整'}`, true)
+  }
+  if (settled && chartResult !== undefined && !chartResult.ok) {
+    return fail(`chart 区段无效：${chartResult.reason ?? '内容不完整'}`, true)
+  }
+
+  const narrative = narrativeResult?.ok && narrativeResult.value.mode === 'ntv'
+    ? narrativeResult.value
+    : undefined
+  const chart = chartResult?.ok && chartResult.value.mode === 'chart'
+    ? chartResult.value
+    : undefined
+
+  if (narrative !== undefined && chart !== undefined) {
+    return { ok: true, value: { mode: 'combined', narrative, chart } }
+  }
+  if (narrative !== undefined) return { ok: true, value: narrative }
+  if (chart !== undefined) return { ok: true, value: chart }
+  return fail('narrative 或 chart 区段尚未形成可渲染内容', settled)
+}
+
+/** Parse the model-authored, line-based AVA DSL without evaluating code or markup. */
+export function parseAvaSource(source: string, settled = false): AvaParseResult {
+  const unsafe = safeSource(source)
+  if (unsafe !== undefined) return unsafe
+  const lines = completeLines(source, settled)
+  const firstLine = lines[0]?.trim().toLowerCase()
+  if (firstLine === 'ava ntv') return parseAvaNtvSource(source, settled)
+  if (firstLine === 'ava' && lines.slice(1).some(line => line === 'narrative' || line === 'chart')) {
+    return parseUnifiedAvaSource(source, settled)
+  }
+  return parseAvaChartSource(source, settled)
 }

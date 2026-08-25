@@ -1,7 +1,7 @@
 {
   "name": "dsh-antv-ava",
   "version": "0.1.0",
-  "description": "AntV AVA visual analytics plugin for DeepSeek Harness: turn text-derived structured data into recommended charts and automatic insights.",
+  "description": "AntV AVA plugin for DeepSeek Harness: automatically render data-heavy answers as streaming narrative text, charts, or both.",
   "author": "HellowVirgil",
   "repository": {
     "type": "git",
@@ -93,6 +93,9 @@
     "deepseek-harness",
     "antv",
     "ava",
+    "ntv",
+    "narrative-text-visualization",
+    "data-storytelling",
     "visual-analytics",
     "chart-recommendation",
     "insight",

@@ -1,88 +1,80 @@
 ---
 name: antv-ava
-description: Convert quantitative facts in text into dsh-antv-ava DSL for inline AVA chart recommendation and automatic data insights in DSH. Use when the user asks to visualize, chart, analyze, interpret, compare, rank, or find trends, proportions, distributions, outliers, change points, or correlations in text that contains supported numeric data.
+description: Convert supported quantitative facts into a unified dsh-antv-ava visualization that automatically uses AVA narrative text (NTV), a chart, or both. Use for data-heavy conclusions, KPI summaries, period-over-period interpretation, category breakdowns, shares, rankings, trends, distributions, outliers, correlations, or explicit chart requests in DSH.
 ---
 
 # AntV AVA for DSH
 
-Interpret the source text, extract only supported quantitative facts, and emit one `ava` fenced block. Do not invent missing values to make qualitative text chartable.
+Preserve only supported facts and emit one `ava` fenced block. Decide the useful sections without asking the user to choose a mode:
 
-## Output contract
+- Use `narrative` for readable KPI conclusions, changes, shares, and category breakdowns.
+- Use `narrative` plus `chart` when visual shape materially improves a trend, distribution, comparison, ranking, correlation, or composition.
+- Use only `chart` for an explicit chart request or when extra narrative would be redundant.
 
-```ava
-ava
-title <title>
-description <optional description>
-purpose <optional purpose>
-language <zh-CN or en-US>
-fields
-  - id <ascii_id>
-    label <display label with optional unit>
-    type <categorical|quantitative|temporal>
-    role <dimension|measure>
-data
-  - <field_id> <value>
-    <field_id> <value>
-```
-
-Use exactly two spaces per nesting level. Start each field and data row with `  -`; indent its remaining properties with four spaces.
-
-## Select the analysis purpose
-
-- `Comparison`: compare values across categories.
-- `Trend`: show change across ordered time.
-- `Distribution`: show spread or frequency.
-- `Rank`: order categories by value.
-- `Proportion`: show shares of a whole.
-- `Composition`: compare components across groups or time.
-
-Omit `purpose` when the data supports several reasonable views and AVA should decide.
-
-## Extract fields
-
-- Use ASCII field ids such as `quarter`, `revenue`, or `conversion_rate`.
-- Put human-readable names and units in `label`, not in numeric values.
-- Mark dates, quarters, ordered stages, and categories as `dimension`.
-- Mark values that should be aggregated or compared as `measure` with type `quantitative`.
-- Preserve temporal values as written when they sort naturally; prefer ISO dates for exact dates.
-- Include 2–12 fields and normally 3–50 rows.
-
-## Evidence rules
-
-- Encode only facts directly stated by the user or available source.
-- Preserve uncertainty in prose outside the fence; do not convert vague words such as “many” or “rapidly” into numbers.
-- Do not infer missing periods as zero unless the source explicitly says zero.
-- Keep percentages as numeric percentage points: write `42`, not `42%` or `0.42`, and include `%` in the field label.
-- Do not mix incompatible units in one measure field.
-- If the text has no meaningful numeric comparison, answer in prose or use an infographic instead of AVA.
-
-## Example
-
-For “Q1 revenue was 128, Q2 was 164, Q3 was 191, and Q4 was 226”:
+Put `narrative` before `chart` so text phrases stream before chart data is complete.
 
 ```ava
 ava
-title 季度收入趋势
-purpose Trend
 language zh-CN
-fields
-  - id quarter
-    label 季度
-    type temporal
-    role dimension
-  - id revenue
-    label 收入
-    type quantitative
-    role measure
-data
-  - quarter Q1
-    revenue 128
-  - quarter Q2
-    revenue 164
-  - quarter Q3
-    revenue 191
-  - quarter Q4
-    revenue 226
+narrative
+  headline 本月订单保持增长
+  paragraph
+    metric-name 订单总量
+    metric-value 1.98亿
+    text ，同比增加
+    delta positive 1,302.76万
+    text ，增长
+    ratio positive 7.05%
+  heading 2 品类结构
+  bullet
+    dimension 办公用品：
+    metric-value 1.59亿
+    text ，占比
+    proportion 80.47%
+chart
+  title 各品类订单规模
+  purpose Comparison
+  fields
+    - id category
+      label 品类
+      type categorical
+      role dimension
+    - id orders
+      label 订单量（万）
+      type quantitative
+      role measure
+  data
+    - category 办公用品
+      orders 15900
+    - category 家具
+      orders 3507.16
 ```
 
-Before emitting the fence, verify that every row contains every declared field, all measure values are numeric, the purpose matches the question, and no value was invented.
+## Compose narrative phrases
+
+Inside `narrative`, use optional `headline`, `heading 1..6 <text>`, `paragraph`, `bullet`, `section`, and `divider`. Indent them two spaces from the fence root. Indent phrases four spaces from the root.
+
+Use:
+
+- `text` and `strong` for connective prose.
+- `metric-name`, `metric-value`, and `other-value` for metrics.
+- `dimension`, `time`, `contribution`, `proportion`, and `trend` for AVA entities.
+- `delta <positive|negative|equal>` for absolute change.
+- `ratio <positive|negative|equal>` for change rate.
+
+Treat assessment as direction, not desirability. Put punctuation in `text` phrases and keep phrase lines short enough to stream naturally.
+
+## Compose chart data
+
+Inside `chart`, indent the existing chart DSL by two spaces. Require `title`, `fields`, and `data`. Choose `Comparison`, `Trend`, `Distribution`, `Rank`, `Proportion`, or `Composition`. Use ASCII field ids, 2–12 fields, complete rows, units in labels, and numeric quantitative values.
+
+## Preserve evidence
+
+- Do not infer missing values, periods, or zeros.
+- Preserve language, units, precision, and uncertainty.
+- Do not mix incompatible units in one measure.
+- Avoid repeating the same conclusion in narrative and chart insight text.
+- Use ordinary prose when there is no useful quantitative structure.
+- Never emit executable markup, secrets, local/private URLs, or unsupported claims.
+
+Before finishing, verify narrative punctuation, assessment direction, proportion validity, and chart row completeness.

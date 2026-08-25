@@ -6,7 +6,7 @@ import {
   useState,
   type ReactElement,
 } from 'react'
-import { parseAvaSource, type AvaDocument, type AvaField } from './ava-source.ts'
+import { parseAvaSource, type AvaDocument, type AvaField, type AvaNtvDocument } from './ava-source.ts'
 import {
   loadAvaAsset,
   type AvaAnalysis,
@@ -14,6 +14,7 @@ import {
   type AvaEngine,
   type AvaPattern,
 } from './asset-loader.ts'
+import { NtvBlock } from './NtvBlock.tsx'
 
 export interface AvaBlockProps {
   source: string
@@ -106,6 +107,19 @@ function downloadPng(container: HTMLElement, title: string): void {
   anchor.remove()
 }
 
+function chartTheme(container: HTMLElement): 'classic' | 'classicDark' {
+  let node: HTMLElement | null = container
+  while (node !== null) {
+    const match = getComputedStyle(node).backgroundColor.match(/^rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)(?:[, /]+([\d.]+))?\)$/)
+    if (match !== null && Number(match[4] ?? 1) > 0) {
+      const luminance = (Number(match[1]) * 299 + Number(match[2]) * 587 + Number(match[3]) * 114) / 1000
+      return luminance < 128 ? 'classicDark' : 'classic'
+    }
+    node = node.parentElement
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'classicDark' : 'classic'
+}
+
 export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
@@ -116,6 +130,7 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [resolvedChartTheme, setResolvedChartTheme] = useState<'classic' | 'classicDark' | undefined>()
   const parsed = useMemo(() => parseAvaSource(source, isSettled), [isSettled, source])
 
   useLayoutEffect(() => {
@@ -127,7 +142,61 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
     if (node !== null && node.closest('[data-streaming]') === null) setIsSettled(true)
   }, [settled, source])
 
+  const narrativeDocument: AvaNtvDocument | undefined = !parsed.ok
+    ? undefined
+    : parsed.value.mode === 'ntv'
+      ? parsed.value
+      : parsed.value.mode === 'combined'
+        ? parsed.value.narrative
+        : undefined
+  const document: AvaDocument | undefined = !parsed.ok
+    ? undefined
+    : parsed.value.mode === 'chart'
+      ? parsed.value
+      : parsed.value.mode === 'combined'
+        ? parsed.value.chart
+        : undefined
+  const combined = parsed.ok && parsed.value.mode === 'combined'
+
+  useLayoutEffect(() => {
+    const container = canvasRef.current
+    if (document === undefined || container === null) {
+      setResolvedChartTheme(undefined)
+      return
+    }
+
+    let timers: number[] = []
+    const sampleTheme = (): void => {
+      const next = chartTheme(container)
+      setResolvedChartTheme(current => current === next ? current : next)
+    }
+    const scheduleThemeSample = (): void => {
+      for (const timer of timers) window.clearTimeout(timer)
+      timers = [0, 80, 260].map(delay => window.setTimeout(sampleTheme, delay))
+    }
+
+    sampleTheme()
+    const observer = new MutationObserver(scheduleThemeSample)
+    let node: HTMLElement | null = container
+    while (node !== null) {
+      observer.observe(node, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme', 'data-color-scheme', 'data-color-mode'],
+      })
+      node = node.parentElement
+    }
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    media.addEventListener?.('change', scheduleThemeSample)
+
+    return () => {
+      observer.disconnect()
+      media.removeEventListener?.('change', scheduleThemeSample)
+      for (const timer of timers) window.clearTimeout(timer)
+    }
+  }, [document])
+
   useEffect(() => {
+    if (document === undefined) return
     let active = true
     void loadAvaAsset().then(
       loaded => {
@@ -140,26 +209,27 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
     return () => {
       active = false
     }
-  }, [])
+  }, [document])
 
   useEffect(() => {
     const container = canvasRef.current
-    if (engine === null || container === null || !parsed.ok) return
+    if (engine === null || container === null || document === undefined || resolvedChartTheme === undefined) return
     let active = true
-    setReady(false)
+    if (chartRef.current === null) setReady(false)
     setError(null)
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
           chartRef.current?.destroy()
           container.replaceChildren()
-          const nextAnalysis = engine.analyze(parsed.value)
+          const nextAnalysis = engine.analyze(document)
           const chart = new engine.Chart({ container, autoFit: true, height: 360 })
           chartRef.current = chart
           chart.options({
             ...nextAnalysis.advice.spec,
-            data: parsed.value.data,
+            data: document.data,
             animate: false,
+            theme: resolvedChartTheme,
           })
           await chart.render()
           if (!active) {
@@ -177,7 +247,7 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
       active = false
       window.clearTimeout(timer)
     }
-  }, [engine, parsed])
+  }, [document, engine, resolvedChartTheme])
 
   useEffect(() => () => {
     chartRef.current?.destroy()
@@ -194,7 +264,10 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
     }
   }
 
-  const document = parsed.ok ? parsed.value : undefined
+  if (narrativeDocument !== undefined && document === undefined) {
+    return <NtvBlock document={narrativeDocument} source={source} settled={isSettled} rootRef={rootRef} />
+  }
+
   const patterns = document === undefined || analysis === null
     ? []
     : analysis.patterns.map(pattern => describePattern(pattern, document))
@@ -204,63 +277,67 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
     : CHART_NAMES[analysis.advice.type]?.[language] ?? analysis.advice.type
 
   return (
-    <div ref={rootRef} className="dsh-antv-ava" data-ready={ready ? 'true' : 'false'}>
-      <div className="dsh-antv-ava__toolbar">
-        <span className="dsh-antv-ava__brand">AntV AVA</span>
-        {chartName !== '' && <span className="dsh-antv-ava__badge">{chartName}</span>}
-        {analysis !== null && <span className="dsh-antv-ava__score">score {analysis.advice.score.toFixed(2)}</span>}
-        <button
-          type="button"
-          className="dsh-antv-ava__button"
-          disabled={!ready}
-          onClick={() => {
-            try {
-              if (canvasRef.current !== null && document !== undefined) downloadPng(canvasRef.current, document.title)
-            } catch (reason) {
-              setError(`导出失败：${describeError(reason)}`)
-            }
-          }}
-        >
-          PNG
-        </button>
-        <button type="button" className="dsh-antv-ava__button" onClick={() => void copySource()}>
-          {copied ? '已复制' : '复制 DSL'}
-        </button>
-      </div>
+    <div ref={rootRef} className="dsh-antv-ava-flow" data-ready={ready ? 'true' : 'false'} data-stream-state={isSettled ? 'settled' : 'streaming'}>
+      {combined && narrativeDocument !== undefined && (
+        <NtvBlock document={narrativeDocument} source={source} settled={isSettled} showSource={false} />
+      )}
 
-      {document !== undefined && (
-        <div className="dsh-antv-ava__heading">
-          <strong>{document.title}</strong>
-          {document.description !== undefined && <span>{document.description}</span>}
+      <section className={`dsh-antv-ava-flow__chart${combined ? ' dsh-antv-ava-flow__chart--supplementary' : ''}`}>
+        {document !== undefined && (
+          <header className="dsh-antv-ava-flow__heading">
+            <h3>{document.title}</h3>
+            {document.description !== undefined && <p>{document.description}</p>}
+          </header>
+        )}
+
+        <div className="dsh-antv-ava-flow__meta">
+          <span>{chartName === '' ? 'AntV AVA' : `AntV AVA · ${chartName}`}</span>
+          <button
+            type="button"
+            disabled={!ready}
+            onClick={() => {
+              try {
+                if (canvasRef.current !== null && document !== undefined) downloadPng(canvasRef.current, document.title)
+              } catch (reason) {
+                setError(`导出失败：${describeError(reason)}`)
+              }
+            }}
+          >
+            {language === 'zh-CN' ? '下载 PNG' : 'Download PNG'}
+          </button>
         </div>
-      )}
-      {error !== null && <div className="dsh-antv-ava__error" role="alert">{error}</div>}
-      {!parsed.ok && isSettled && parsed.reason !== undefined && (
-        <div className="dsh-antv-ava__error" role="alert">{parsed.reason}</div>
-      )}
 
-      <div className="dsh-antv-ava__viewport">
+        {error !== null && <div className="dsh-antv-ava__error" role="alert">{error}</div>}
+        {!parsed.ok && isSettled && parsed.reason !== undefined && (
+          <div className="dsh-antv-ava__error" role="alert">{parsed.reason}</div>
+        )}
+
         {!ready && error === null && (
-          <div className="dsh-antv-ava__status">
-            {engine === null ? '正在加载 AntV AVA 引擎…' : '正在分析数据并推荐图表…'}
+          <div className="dsh-antv-ava-flow__status">
+            {engine === null
+              ? (language === 'zh-CN' ? '正在加载 AntV AVA 引擎…' : 'Loading AntV AVA…')
+              : (language === 'zh-CN' ? '正在分析数据并生成图表…' : 'Analyzing data and rendering the chart…')}
           </div>
         )}
-        <div ref={canvasRef} className="dsh-antv-ava__canvas" />
-      </div>
+        <div ref={canvasRef} className="dsh-antv-ava-flow__canvas" />
 
-      {ready && document !== undefined && (
-        <div className="dsh-antv-ava__insights">
-          <strong>{language === 'zh-CN' ? 'AVA 自动洞察' : 'AVA insights'}</strong>
-          {patterns.length > 0 ? (
-            <ul>{patterns.map((pattern, index) => <li key={`${index}-${pattern}`}>{pattern}</li>)}</ul>
-          ) : (
-            <span>{language === 'zh-CN' ? '当前数据未检测到显著统计模式。' : 'No significant statistical pattern was detected.'}</span>
-          )}
+        {ready && document !== undefined && !combined && (
+          <div className="dsh-antv-ava-flow__insights">
+            <h4>{language === 'zh-CN' ? '数据洞察' : 'Data insights'}</h4>
+            {patterns.length > 0 ? (
+              <ul>{patterns.map((pattern, index) => <li key={`${index}-${pattern}`}>{pattern}</li>)}</ul>
+            ) : (
+              <p>{language === 'zh-CN' ? '当前数据未检测到显著统计模式。' : 'No significant statistical pattern was detected.'}</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      <details className="dsh-antv-ava-flow__source">
+        <summary>{language === 'zh-CN' ? 'AVA · 查看 DSL' : 'AVA · View DSL'}</summary>
+        <div className="dsh-antv-ava-flow__source-actions">
+          <button type="button" onClick={() => void copySource()}>{copied ? (language === 'zh-CN' ? '已复制' : 'Copied') : (language === 'zh-CN' ? '复制 DSL' : 'Copy DSL')}</button>
         </div>
-      )}
-
-      <details className="dsh-antv-ava__source">
-        <summary>{language === 'zh-CN' ? '查看 AVA DSL' : 'View AVA DSL'}</summary>
         <pre>{source}</pre>
       </details>
     </div>

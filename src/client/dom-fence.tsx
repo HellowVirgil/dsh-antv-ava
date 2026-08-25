@@ -100,7 +100,7 @@ export function installDomFenceRenderer(): () => void {
     // its completed DSL header instead of treating arbitrary banner text as
     // the language. Once settled, require the real ava label so a
     // different fence that happened to contain similar text is restored.
-    const looksLikeStreamingAva = !settled && /^\s*ava\s*\r?\n/i.test(raw)
+    const looksLikeStreamingAva = !settled && /^\s*ava(?:\s+(?:ntv|chart))?\s*\r?\n/i.test(raw)
     if ((settled && !labeledAva) || (!settled && !looksLikeStreamingAva)) {
       unmount(block)
       return
