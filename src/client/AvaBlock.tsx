@@ -23,15 +23,21 @@ export interface AvaBlockProps {
 }
 
 const CHART_NAMES: Record<string, { 'zh-CN': string; 'en-US': string }> = {
-  line_chart: { 'zh-CN': '折线图', 'en-US': 'Line chart' },
-  column_chart: { 'zh-CN': '柱状图', 'en-US': 'Column chart' },
-  bar_chart: { 'zh-CN': '条形图', 'en-US': 'Bar chart' },
-  pie_chart: { 'zh-CN': '饼图', 'en-US': 'Pie chart' },
-  donut_chart: { 'zh-CN': '环形图', 'en-US': 'Donut chart' },
-  scatter_plot: { 'zh-CN': '散点图', 'en-US': 'Scatter plot' },
-  area_chart: { 'zh-CN': '面积图', 'en-US': 'Area chart' },
-  grouped_column_chart: { 'zh-CN': '分组柱状图', 'en-US': 'Grouped column chart' },
-  stacked_column_chart: { 'zh-CN': '堆叠柱状图', 'en-US': 'Stacked column chart' },
+  line: { 'zh-CN': '折线图', 'en-US': 'Line chart' },
+  column: { 'zh-CN': '柱状图', 'en-US': 'Column chart' },
+  bar: { 'zh-CN': '条形图', 'en-US': 'Bar chart' },
+  pie: { 'zh-CN': '饼图', 'en-US': 'Pie chart' },
+  scatter: { 'zh-CN': '散点图', 'en-US': 'Scatter plot' },
+  area: { 'zh-CN': '面积图', 'en-US': 'Area chart' },
+  histogram: { 'zh-CN': '直方图', 'en-US': 'Histogram' },
+  boxplot: { 'zh-CN': '箱线图', 'en-US': 'Boxplot' },
+  violin: { 'zh-CN': '小提琴图', 'en-US': 'Violin plot' },
+  radar: { 'zh-CN': '雷达图', 'en-US': 'Radar chart' },
+  funnel: { 'zh-CN': '漏斗图', 'en-US': 'Funnel chart' },
+  waterfall: { 'zh-CN': '瀑布图', 'en-US': 'Waterfall chart' },
+  treemap: { 'zh-CN': '矩形树图', 'en-US': 'Treemap' },
+  sankey: { 'zh-CN': '桑基图', 'en-US': 'Sankey diagram' },
+  liquid: { 'zh-CN': '水波图', 'en-US': 'Liquid chart' },
   table: { 'zh-CN': '数据表', 'en-US': 'Table' },
 }
 
@@ -51,10 +57,10 @@ function printable(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
-function describePattern(pattern: AvaPattern, document: AvaDocument): string {
-  const zh = document.language === 'zh-CN'
-  const measure = fieldLabel(document.fields, pattern.measure)
-  const dimension = fieldLabel(document.fields, pattern.dimension)
+function describePattern(pattern: AvaPattern, fields: AvaField[], language: 'zh-CN' | 'en-US'): string {
+  const zh = language === 'zh-CN'
+  const measure = fieldLabel(fields, pattern.measure)
+  const dimension = fieldLabel(fields, pattern.dimension)
   switch (pattern.type) {
     case 'trend': {
       const trend = pattern.trend
@@ -80,7 +86,7 @@ function describePattern(pattern: AvaPattern, document: AvaDocument): string {
         : `${printable(pattern.x)} accounts for the majority${proportion === '' ? '' : ` (${proportion})`}`
     }
     case 'correlation': {
-      const measures = Array.isArray(pattern.measures) ? pattern.measures.map(item => fieldLabel(document.fields, item)).join('、') : ''
+      const measures = Array.isArray(pattern.measures) ? pattern.measures.map(item => fieldLabel(fields, item)).join('、') : ''
       const coefficient = typeof pattern.pcorr === 'number' ? pattern.pcorr.toFixed(2) : ''
       return zh
         ? `${measures || '两个指标'}存在相关性${coefficient === '' ? '' : `（系数 ${coefficient}）`}`
@@ -107,17 +113,26 @@ function downloadPng(container: HTMLElement, title: string): void {
   anchor.remove()
 }
 
-function chartTheme(container: HTMLElement): 'classic' | 'classicDark' {
+function chartTheme(container: HTMLElement): 'default' | 'dark' {
   let node: HTMLElement | null = container
   while (node !== null) {
     const match = getComputedStyle(node).backgroundColor.match(/^rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)(?:[, /]+([\d.]+))?\)$/)
     if (match !== null && Number(match[4] ?? 1) > 0) {
       const luminance = (Number(match[1]) * 299 + Number(match[2]) * 587 + Number(match[3]) * 114) / 1000
-      return luminance < 128 ? 'classicDark' : 'classic'
+      return luminance < 128 ? 'dark' : 'default'
     }
     node = node.parentElement
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'classicDark' : 'classic'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'
+}
+
+function themedChartSyntax(document: AvaDocument, theme: 'default' | 'dark'): string {
+  const lines = document.syntax.split('\n').filter(line => {
+    if (line.startsWith(' ')) return true
+    return !/^(?:theme|title)(?::\s*|\s+)/i.test(line)
+  })
+  lines.push(`theme ${theme}`)
+  return lines.join('\n')
 }
 
 export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
@@ -130,7 +145,7 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [resolvedChartTheme, setResolvedChartTheme] = useState<'classic' | 'classicDark' | undefined>()
+  const [resolvedChartTheme, setResolvedChartTheme] = useState<'default' | 'dark' | undefined>()
   const parsed = useMemo(() => parseAvaSource(source, isSettled), [isSettled, source])
 
   useLayoutEffect(() => {
@@ -218,36 +233,28 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
     if (chartRef.current === null) setReady(false)
     setError(null)
     const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          chartRef.current?.destroy()
-          container.replaceChildren()
-          const nextAnalysis = engine.analyze(document)
-          const chart = new engine.Chart({ container, autoFit: true, height: 360 })
-          chartRef.current = chart
-          chart.options({
-            ...nextAnalysis.advice.spec,
-            data: document.data,
-            animate: false,
-            theme: resolvedChartTheme,
-          })
-          await chart.render()
-          if (!active) {
-            chart.destroy()
-            return
-          }
-          setAnalysis(nextAnalysis)
-          setReady(true)
-        } catch (reason) {
-          if (active) setError(describeError(reason))
-        }
-      })()
-    }, 120)
+      try {
+        const chart = chartRef.current ?? new engine.GPTVis({
+          container,
+          height: 360,
+          locale: document.language,
+          theme: resolvedChartTheme,
+          wrapper: false,
+        })
+        chartRef.current = chart
+        chart.render(themedChartSyntax(document, resolvedChartTheme))
+        if (!active) return
+        setAnalysis(isSettled ? engine.analyze(document) : null)
+        setReady(true)
+      } catch (reason) {
+        if (active && isSettled) setError(describeError(reason))
+      }
+    }, isSettled ? 0 : 80)
     return () => {
       active = false
       window.clearTimeout(timer)
     }
-  }, [document, engine, resolvedChartTheme])
+  }, [document, engine, isSettled, resolvedChartTheme])
 
   useEffect(() => () => {
     chartRef.current?.destroy()
@@ -270,11 +277,11 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
 
   const patterns = document === undefined || analysis === null
     ? []
-    : analysis.patterns.map(pattern => describePattern(pattern, document))
+    : analysis.patterns.map(pattern => describePattern(pattern, analysis.fields, document.language))
   const language = document?.language ?? 'zh-CN'
-  const chartName = analysis === null
+  const chartName = document === undefined
     ? ''
-    : CHART_NAMES[analysis.advice.type]?.[language] ?? analysis.advice.type
+    : CHART_NAMES[document.chartType]?.[language] ?? document.chartType
 
   return (
     <div ref={rootRef} className="dsh-antv-ava-flow" data-ready={ready ? 'true' : 'false'} data-stream-state={isSettled ? 'settled' : 'streaming'}>
@@ -283,21 +290,21 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
       )}
 
       <section className={`dsh-antv-ava-flow__chart${combined ? ' dsh-antv-ava-flow__chart--supplementary' : ''}`}>
-        {document !== undefined && (
+        {document !== undefined && (document.title !== undefined || document.description !== undefined) && (
           <header className="dsh-antv-ava-flow__heading">
-            <h3>{document.title}</h3>
+            {document.title !== undefined && <h3>{document.title}</h3>}
             {document.description !== undefined && <p>{document.description}</p>}
           </header>
         )}
 
         <div className="dsh-antv-ava-flow__meta">
-          <span>{chartName === '' ? 'AntV AVA' : `AntV AVA · ${chartName}`}</span>
+          <span>{chartName === '' ? 'AntV GPT-Vis' : `AntV GPT-Vis · ${chartName}`}</span>
           <button
             type="button"
             disabled={!ready}
             onClick={() => {
               try {
-                if (canvasRef.current !== null && document !== undefined) downloadPng(canvasRef.current, document.title)
+                if (canvasRef.current !== null && document !== undefined) downloadPng(canvasRef.current, document.title ?? document.chartType)
               } catch (reason) {
                 setError(`导出失败：${describeError(reason)}`)
               }
@@ -315,13 +322,13 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
         {!ready && error === null && (
           <div className="dsh-antv-ava-flow__status">
             {engine === null
-              ? (language === 'zh-CN' ? '正在加载 AntV AVA 引擎…' : 'Loading AntV AVA…')
-              : (language === 'zh-CN' ? '正在分析数据并生成图表…' : 'Analyzing data and rendering the chart…')}
+              ? (language === 'zh-CN' ? '正在加载 AntV GPT-Vis 引擎…' : 'Loading AntV GPT-Vis…')
+              : (language === 'zh-CN' ? '正在接收数据并生成图表…' : 'Receiving data and rendering the chart…')}
           </div>
         )}
         <div ref={canvasRef} className="dsh-antv-ava-flow__canvas" />
 
-        {ready && document !== undefined && !combined && (
+        {ready && isSettled && analysis !== null && document !== undefined && !combined && (
           <div className="dsh-antv-ava-flow__insights">
             <h4>{language === 'zh-CN' ? '数据洞察' : 'Data insights'}</h4>
             {patterns.length > 0 ? (
@@ -334,7 +341,7 @@ export function AvaBlock({ source, settled }: AvaBlockProps): ReactElement {
       </section>
 
       <details className="dsh-antv-ava-flow__source">
-        <summary>{language === 'zh-CN' ? 'AVA · 查看 DSL' : 'AVA · View DSL'}</summary>
+        <summary>{language === 'zh-CN' ? 'AVA / GPT-Vis · 查看 DSL' : 'AVA / GPT-Vis · View DSL'}</summary>
         <div className="dsh-antv-ava-flow__source-actions">
           <button type="button" onClick={() => void copySource()}>{copied ? (language === 'zh-CN' ? '已复制' : 'Copied') : (language === 'zh-CN' ? '复制 DSL' : 'Copy DSL')}</button>
         </div>

@@ -31,12 +31,11 @@ export interface AvaField {
 
 export interface AvaDocument {
   mode: 'chart'
-  title: string
+  chartType: GptVisChartType
+  syntax: string
+  title?: string | undefined
   description?: string | undefined
-  purpose?: AvaPurpose | undefined
   language: AvaLanguage
-  fields: AvaField[]
-  data: Array<Record<string, string | number>>
 }
 
 export interface AvaNtvDocument {
@@ -61,6 +60,37 @@ const FIELD_ID = /^[A-Za-z][A-Za-z0-9_.-]*$/
 const PURPOSES: AvaPurpose[] = ['Comparison', 'Trend', 'Distribution', 'Rank', 'Proportion', 'Composition']
 const TYPES: AvaFieldType[] = ['categorical', 'quantitative', 'temporal']
 const ROLES: AvaFieldRole[] = ['dimension', 'measure']
+const GPT_VIS_CHART_TYPES = [
+  'area',
+  'bar',
+  'boxplot',
+  'column',
+  'dual-axes',
+  'fishbone-diagram',
+  'flow-diagram',
+  'funnel',
+  'histogram',
+  'indented-tree',
+  'line',
+  'liquid',
+  'mindmap',
+  'network-graph',
+  'organization-chart',
+  'pie',
+  'radar',
+  'sankey',
+  'scatter',
+  'table',
+  'treemap',
+  'venn',
+  'violin',
+  'waterfall',
+  'word-cloud',
+] as const
+
+export type GptVisChartType = typeof GPT_VIS_CHART_TYPES[number]
+
+const GPT_VIS_CHART_TYPE_SET = new Set<string>(GPT_VIS_CHART_TYPES)
 
 const PRIVATE_URL_PATTERNS = [
   /https?:\/\/(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0)(?=[:/\s]|$)/i,
@@ -302,6 +332,183 @@ function parseAvaNtvSource(source: string, settled: boolean): AvaParseResult {
   }
 }
 
+function unquote(value: string): string {
+  const trimmed = value.trim()
+  if (trimmed.length >= 2) {
+    const first = trimmed[0]
+    const last = trimmed.at(-1)
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return trimmed.slice(1, -1)
+    }
+  }
+  return trimmed
+}
+
+function gptVisMetadataValue(line: string, key: string): string | undefined {
+  const match = line.match(new RegExp(`^${key}(?::\\s*|\\s+)(.*)$`, 'i'))
+  return match === null ? undefined : unquote(match[1] ?? '')
+}
+
+function gptVisRows(lines: string[]): Array<Record<string, string>> {
+  const dataIndex = lines.findIndex(line => line === 'data')
+  if (dataIndex < 0) return []
+  const rows: Array<Record<string, string>> = []
+  let current: Record<string, string> | undefined
+  for (const line of lines.slice(dataIndex + 1)) {
+    if (line.trim() === '') continue
+    if (!line.startsWith(' ')) break
+    const start = line.match(/^ {2}- ([A-Za-z][A-Za-z0-9_-]*)(?:\s+(.+))?$/)
+    if (start !== null) {
+      current = { [start[1] ?? '']: unquote(start[2] ?? '') }
+      rows.push(current)
+      continue
+    }
+    const property = line.match(/^ {4}([A-Za-z][A-Za-z0-9_-]*)\s+(.+)$/)
+    if (property !== null && current !== undefined) current[property[1] ?? ''] = unquote(property[2] ?? '')
+  }
+  return rows
+}
+
+function hasCanonicalGptVisData(chartType: GptVisChartType, lines: string[], strict: boolean): boolean {
+  if (chartType === 'liquid') {
+    const percent = lines.map(line => gptVisMetadataValue(line, 'percent')).find(value => value !== undefined)
+    const number = percent === undefined ? undefined : parseNumber(percent)
+    return number !== undefined && number >= 0 && number <= 1
+  }
+  if (chartType === 'histogram') {
+    const dataIndex = lines.findIndex(line => line === 'data')
+    return dataIndex >= 0 && lines.slice(dataIndex + 1).some(line => /^ {2}-\s+-?(?:\d+\.?\d*|\.\d+)$/.test(line))
+  }
+  if (chartType === 'dual-axes') {
+    return lines.includes('categories')
+      && lines.includes('series')
+      && lines.some(line => /^ {2}-\s+\S/.test(line))
+      && lines.some(line => /^ {6}-\s+-?(?:\d+\.?\d*|\.\d+)$/.test(line))
+  }
+  if (['flow-diagram', 'fishbone-diagram', 'indented-tree', 'mindmap', 'network-graph', 'organization-chart'].includes(chartType)) {
+    return lines.some(line => /^\s{2,}(?:-\s+)?\S+(?:\s+\S.*)?$/.test(line))
+  }
+
+  const required: Partial<Record<GptVisChartType, string[]>> = {
+    line: ['time', 'value'],
+    area: ['time', 'value'],
+    column: ['category', 'value'],
+    bar: ['category', 'value'],
+    pie: ['category', 'value'],
+    funnel: ['category', 'value'],
+    boxplot: ['category', 'value'],
+    violin: ['category', 'value'],
+    waterfall: ['category'],
+    scatter: ['x', 'y'],
+    radar: ['name', 'value'],
+    treemap: ['name', 'value'],
+    sankey: ['source', 'target', 'value'],
+    venn: ['sets', 'value'],
+    'word-cloud': ['text', 'value'],
+  }
+  const fields = required[chartType]
+  const rows = gptVisRows(lines)
+  if (chartType === 'table') return lines.some(line => /^ {2}-\s+\S/.test(line))
+  if (chartType === 'waterfall') {
+    return rows.some(row => row.category !== undefined && (parseNumber(row.value ?? '') !== undefined || row.isTotal === 'true'))
+  }
+  if (fields === undefined) return rows.length > 0
+  const numericFields: Partial<Record<GptVisChartType, string[]>> = {
+    line: ['value'],
+    area: ['value'],
+    column: ['value'],
+    bar: ['value'],
+    pie: ['value'],
+    funnel: ['value'],
+    boxplot: ['value'],
+    violin: ['value'],
+    scatter: ['x', 'y'],
+    radar: ['value'],
+    treemap: ['value'],
+    sankey: ['value'],
+    venn: ['value'],
+    'word-cloud': ['value'],
+  }
+  const valid = (row: Record<string, string>): boolean => fields.every(field => row[field] !== undefined && row[field] !== '')
+    && (numericFields[chartType] ?? []).every(field => parseNumber(row[field] ?? '') !== undefined)
+  return strict ? rows.length > 0 && rows.every(valid) : rows.some(valid)
+}
+
+function parseGptVisChartSyntax(
+  source: string,
+  settled: boolean,
+  inheritedLanguage?: AvaLanguage,
+  sourceAlreadyComplete = false,
+): AvaParseResult {
+  const lines = completeLines(source, sourceAlreadyComplete ? true : settled)
+  if (lines.length === 0) return fail('chart 区段为空', settled)
+  const declaration = lines[0]?.trim().match(/^vis\s+([a-z][a-z0-9-]*)$/i)
+  if (declaration === null || declaration === undefined) {
+    return fail('chart 区段第一行必须是 vis <chart-type>', settled)
+  }
+  const chartType = declaration[1]?.toLowerCase() ?? ''
+  if (!GPT_VIS_CHART_TYPE_SET.has(chartType)) return fail(`GPT-Vis 不支持图表类型：${chartType}`, settled)
+  if (!hasCanonicalGptVisData(chartType as GptVisChartType, lines, settled)) {
+    return fail(`GPT-Vis ${chartType} 图表尚未包含符合字段约定的可渲染数据`, settled)
+  }
+
+  const arrayItems = lines.filter(line => /^\s+-\s+\S/.test(line)).length
+  if (arrayItems > MAX_AVA_ROWS) return { ok: false, reason: `GPT-Vis 数组项数量不能超过 ${MAX_AVA_ROWS}` }
+
+  const title = lines
+    .filter(line => !line.startsWith(' '))
+    .map(line => gptVisMetadataValue(line, 'title'))
+    .find((value): value is string => value !== undefined && value !== '')
+  const syntax = lines.join('\n')
+  return {
+    ok: true,
+    value: {
+      mode: 'chart',
+      chartType: chartType as GptVisChartType,
+      syntax,
+      ...(title === undefined ? {} : { title }),
+      language: inheritedLanguage ?? inferLanguage(syntax),
+    },
+  }
+}
+
+function quoteGptVisValue(value: string): string {
+  if (!/\s/.test(value) && !/^["']|["']$/.test(value)) return value
+  return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
+}
+
+function legacyChartType(purpose: AvaPurpose | undefined): GptVisChartType {
+  if (purpose === 'Trend') return 'line'
+  if (purpose === 'Proportion' || purpose === 'Composition') return 'pie'
+  if (purpose === 'Distribution') return 'column'
+  if (purpose === 'Rank') return 'bar'
+  return 'column'
+}
+
+function legacyChartSyntax(
+  title: string,
+  purpose: AvaPurpose | undefined,
+  fields: AvaField[],
+  data: Array<Record<string, string | number>>,
+): { chartType: GptVisChartType; syntax: string } {
+  const chartType = legacyChartType(purpose)
+  const lines = [`vis ${chartType}`, 'data']
+  const dimension = fields.find(field => field.role === 'dimension') as AvaField
+  const measure = fields.find(field => field.role === 'measure') as AvaField
+  const categoryKey = chartType === 'line' ? 'time' : 'category'
+  for (const row of data) {
+    const category = row[dimension.id]
+    const value = row[measure.id]
+    const renderedCategory = typeof category === 'number' ? String(category) : quoteGptVisValue(category ?? '')
+    const renderedValue = typeof value === 'number' ? String(value) : quoteGptVisValue(value ?? '')
+    lines.push(`  - ${categoryKey} ${renderedCategory}`, `    value ${renderedValue}`)
+  }
+  lines.push(`title ${quoteGptVisValue(title)}`)
+  lines.push(`axisXTitle ${quoteGptVisValue(dimension.label)}`)
+  lines.push(`axisYTitle ${quoteGptVisValue(measure.label)}`)
+  return { chartType, syntax: lines.join('\n') }
+}
+
 /** Parse the model-authored, line-based AVA DSL without evaluating code or markup. */
 function parseAvaChartSource(source: string, settled: boolean): AvaParseResult {
   const lines = completeLines(source, settled)
@@ -445,16 +652,16 @@ function parseAvaChartSource(source: string, settled: boolean): AvaParseResult {
   if (rawRows.length > MAX_AVA_ROWS) return { ok: false, reason: `数据行数不能超过 ${MAX_AVA_ROWS}` }
   if (data.length === 0) return fail('至少需要一行完整数据', settled)
 
+  const converted = legacyChartSyntax(title, purpose, fields, data)
   return {
     ok: true,
     value: {
       mode: 'chart',
+      chartType: converted.chartType,
+      syntax: converted.syntax,
       title,
       ...(description === undefined ? {} : { description }),
-      ...(purpose === undefined ? {} : { purpose }),
       language: language ?? inferLanguage(`${title}${description ?? ''}`),
-      fields,
-      data,
     },
   }
 }
@@ -505,10 +712,12 @@ function parseUnifiedAvaSource(source: string, settled: boolean): AvaParseResult
     return [header, ...inheritedLanguage, ...sectionLines[section]].join('\n')
   }
   const narrativeResult = seen.has('narrative')
-    ? parseAvaNtvSource(sectionSource('ava ntv', 'narrative'), settled)
+    ? parseAvaNtvSource(sectionSource('ava ntv', 'narrative'), true)
     : undefined
   const chartResult = seen.has('chart')
-    ? parseAvaChartSource(sectionSource('ava chart', 'chart'), settled)
+    ? sectionLines.chart[0]?.trim().toLowerCase().startsWith('vis ')
+      ? parseGptVisChartSyntax(sectionLines.chart.join('\n'), settled, language, true)
+      : parseAvaChartSource(sectionSource('ava chart', 'chart'), true)
     : undefined
 
   if (settled && narrativeResult !== undefined && !narrativeResult.ok) {

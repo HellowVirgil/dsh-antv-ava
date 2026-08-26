@@ -11,7 +11,7 @@ Preserve only supported facts and emit one `ava` fenced block. Decide the useful
 - Use `narrative` plus `chart` when visual shape materially improves a trend, distribution, comparison, ranking, correlation, or composition.
 - Use only `chart` for an explicit chart request or when extra narrative would be redundant.
 
-Put `narrative` before `chart` so text phrases stream before chart data is complete.
+Put `narrative` before `chart` so text phrases appear first and GPT-Vis can grow the chart as complete data lines arrive.
 
 ```ava
 ava
@@ -32,22 +32,15 @@ narrative
     text ，占比
     proportion 80.47%
 chart
-  title 各品类订单规模
-  purpose Comparison
-  fields
-    - id category
-      label 品类
-      type categorical
-      role dimension
-    - id orders
-      label 订单量（万）
-      type quantitative
-      role measure
+  vis column
   data
     - category 办公用品
-      orders 15900
+      value 15900
     - category 家具
-      orders 3507.16
+      value 3507.16
+  title "各品类订单规模"
+  axisXTitle 品类
+  axisYTitle "订单量（万）"
 ```
 
 ## Compose narrative phrases
@@ -66,15 +59,19 @@ Treat assessment as direction, not desirability. Put punctuation in `text` phras
 
 ## Compose chart data
 
-Inside `chart`, indent the existing chart DSL by two spaces. Require `title`, `fields`, and `data`. Choose `Comparison`, `Trend`, `Distribution`, `Rank`, `Proportion`, or `Composition`. Use ASCII field ids, 2–12 fields, complete rows, units in labels, and numeric quantitative values.
+Inside `chart`, indent official GPT-Vis syntax by two spaces and start with `vis <chart-type>`. Prefer `line`/`area` for trends, `column`/`bar` for comparisons and rankings, `pie` for a small part-to-whole composition, `scatter` for correlation, `histogram`/`boxplot`/`violin` for distributions, and `table` when exact lookup matters most.
+
+Put `data` before display properties so complete items can render while generation continues. Use ASCII field ids, quote values containing spaces, keep quantitative values numeric, and put units in `title`, `axisXTitle`, or `axisYTitle`. Include a concise `title`; omit `theme`, `width`, and `height` because the plugin owns layout and live theme adaptation.
+
+Follow GPT-Vis schemas exactly: `line/area` use `time,value[,group]`; `column/bar/pie/funnel/boxplot/violin` use `category,value[,group]`; `scatter` uses `x,y[,group]`; `radar` uses `name,value[,group]`; `sankey` uses `source,target,value`; `treemap` uses `name,value[,children]`; `word-cloud` uses `text,value`; `histogram` uses a simple numeric array; and `table` may use descriptive column keys.
 
 ## Preserve evidence
 
 - Do not infer missing values, periods, or zeros.
 - Preserve language, units, precision, and uncertainty.
 - Do not mix incompatible units in one measure.
-- Avoid repeating the same conclusion in narrative and chart insight text.
+- Avoid repeating the same conclusion in narrative and chart text.
 - Use ordinary prose when there is no useful quantitative structure.
 - Never emit executable markup, secrets, local/private URLs, or unsupported claims.
 
-Before finishing, verify narrative punctuation, assessment direction, proportion validity, and chart row completeness.
+Before finishing, verify narrative punctuation, assessment direction, proportion validity, GPT-Vis syntax, and chart data completeness.

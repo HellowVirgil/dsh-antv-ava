@@ -17,6 +17,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/AntV_AVA-3.4.1-1677ff" alt="AntV AVA 3.4.1">
+  <img src="https://img.shields.io/badge/AntV_GPT--Vis-1.0.0-1677ff" alt="AntV GPT-Vis 1.0.0">
   <img src="https://img.shields.io/badge/streaming-supported-16a34a" alt="支持流式渲染">
   <img src="https://img.shields.io/badge/theme-light%20%7C%20dark-8b5cf6" alt="支持亮色与暗色主题">
 </p>
@@ -27,17 +28,18 @@
   <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="dsh-antv-ava 在 DSH 对话中渲染数据解读和 AntV 图表" width="100%">
 </p>
 
-叙事文本和图表会直接融入模型回复，不使用独立卡片。文本可以随生成过程逐步出现，图表在数据完整后接入同一条对话流。
+叙事文本和图表会直接融入模型回复，不使用独立卡片。文本按短语逐步出现，GPT-Vis 图表在获得可用数据后就开始呈现，并在生成过程中持续更新。
 
 ## 核心功能
 
 - 自动选择表达方式：模型根据问题和数据决定使用 NTV、图表或两者组合。
 - 流式数据解读：指标、变化率、占比、分类明细和结论按短语增量渲染。
-- AntV 图表：通过 AVA Advisor / Insight 推荐图表，并使用 AntV G2 渲染。
+- 流式 AntV 图表：模型生成 GPT-Vis 官方 syntax，完整数据行会在回答结束前持续更新同一个图表实例。
+- AVA 数据洞察：生成稳定后，AVA 会分析表格数据中的趋势、异常、变化、占比和相关性等显著模式。
 - 对话流设计：继承 DSH 的字体、字号、行高、颜色、宽度和 Markdown 间距。
 - 实时主题适配：切换亮色或暗色主题后，图表坐标轴、标签和网格线会同步更新，无需刷新页面。
 - 语义数据表达：支持指标高亮、涨跌箭头、绝对变化、变化率、贡献度和占比微图。
-- 按需加载：只有回答包含图表时才加载 AVA/G2 图表引擎。
+- 按需加载：只有回答包含图表时才加载 AVA/GPT-Vis 图表引擎。
 - 安全解析：限制输入规模，并拒绝可执行标记、危险 URL 和私网资源。
 
 ## 安装
@@ -98,14 +100,11 @@ NTV 支持：
 - 占比、贡献度和占比微图
 - headline、1–6 级标题、段落、列表、分节和分隔线
 
-图表支持 AVA 的常见分析目的：
+图表使用 GPT-Vis syntax，支持：
 
-- Comparison
-- Trend
-- Distribution
-- Rank
-- Proportion
-- Composition
+- 折线图、面积图、柱状图、条形图、饼图、散点图、雷达图、漏斗图、瀑布图和双轴图
+- 直方图、箱线图、小提琴图、矩形树图、桑基图、韦恩图、水波图、词云和表格
+- 在适合数据解读时，也可以使用 GPT-Vis 支持的其他关系图
 
 ## 可选：安装 Skill
 
@@ -132,22 +131,15 @@ narrative
     text ，较 Q1 增长
     ratio positive 76.6%
 chart
-  title 季度收入趋势
-  purpose Trend
-  fields
-    - id quarter
-      label 季度
-      type categorical
-      role dimension
-    - id revenue
-      label 收入（万元）
-      type quantitative
-      role measure
+  vis line
   data
-    - quarter Q1
-      revenue 128
-    - quarter Q4
-      revenue 226
+    - time Q1
+      value 128
+    - time Q4
+      value 226
+  title "季度收入趋势"
+  axisXTitle 季度
+  axisYTitle "收入（万元）"
 ```
 ````
 
@@ -177,4 +169,4 @@ pnpm run verify:pack
 
 ## License
 
-MIT。AntV AVA 和 AntV G2 也采用 MIT License。
+MIT。AntV AVA 和 AntV GPT-Vis 也采用 MIT License。

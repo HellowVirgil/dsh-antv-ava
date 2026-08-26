@@ -1,5 +1,5 @@
 /**
- * DSH host half: teach the model the `ava` fence and expose the lazy AVA/G2
+ * DSH host half: teach the model the `ava` fence and expose the lazy AVA/GPT-Vis
  * browser bundle through the host web server when that optional service
  * becomes available.
  */
@@ -15,7 +15,7 @@ export const AVA_SECTION_TEXT = `When quantitative content benefits from visual 
 
 Choose the contents by communication value:
 - Use \`narrative\` for KPI summaries, period-over-period changes, shares, ranked category breakdowns, or compact analytical reports where readable conclusions matter most.
-- Use both \`narrative\` and \`chart\` when a trend, distribution, comparison, ranking, correlation, or composition becomes materially clearer with visual shape. Put \`narrative\` first so completed phrase lines stream immediately; the chart appears after its fields and data are complete.
+- Use both \`narrative\` and \`chart\` when a trend, distribution, comparison, ranking, correlation, or composition becomes materially clearer with visual shape. Put \`narrative\` first so completed phrase lines stream immediately; GPT-Vis then grows the chart as complete data lines arrive.
 - Use only \`chart\` when the user explicitly asks for a conventional chart or the chart itself is the answer and additional narrative would be redundant.
 
 The unified safe line-based DSL is:
@@ -39,25 +39,18 @@ narrative
     text ，占比
     proportion 80.47%
 chart
-  title 各品类订单规模
-  purpose Comparison
-  fields
-    - id category
-      label 品类
-      type categorical
-      role dimension
-    - id orders
-      label 订单量（万）
-      type quantitative
-      role measure
+  vis column
   data
     - category 办公用品
-      orders 15900
+      value 15900
     - category 家具
-      orders 3507.16
+      value 3507.16
+  title "各品类订单规模"
+  axisXTitle 品类
+  axisYTitle "订单量（万）"
 \`\`\`
 
-The plugin infers the result from section presence: \`narrative\` only renders NTV, \`narrative\` plus \`chart\` renders both in one conversation-native flow, and \`chart\` only renders a chart. Narrative maps to AVA's NarrativeTextSpec and completed phrase lines render progressively while the model streams. Use concise ordinary prose outside the fence only when context does not belong in the visual answer.
+The plugin infers the result from section presence: \`narrative\` only renders NTV, \`narrative\` plus \`chart\` renders both in one conversation-native flow, and \`chart\` only renders a chart. Narrative maps to AVA's NarrativeTextSpec and completed phrase lines render progressively. Chart content is official GPT-Vis syntax; complete data lines are rendered incrementally without waiting for the fence to finish. Use concise ordinary prose outside the fence only when context does not belong in the visual answer.
 
 Narrative rules:
 - The first body line is \`ava\`. Top-level \`language\` is optional. Add a \`narrative\` section and indent its contents by two spaces.
@@ -68,11 +61,14 @@ Narrative rules:
 - Preserve natural punctuation and spaces inside \`text\` phrases. Encode only facts supported by the source; never invent missing values.
 
 Chart rules:
-- Add a \`chart\` section and indent all existing chart statements by two spaces. It requires \`title\`, \`fields\`, and \`data\`; \`purpose\` is one of Comparison, Trend, Distribution, Rank, Proportion, or Composition.
-- Field ids are ASCII. Quantitative values are numbers without units. Do not repeat the same conclusion in both narrative and automatic chart insight text.
+- Add a \`chart\` section, indent the complete GPT-Vis syntax by two spaces, and start it with \`vis <chart-type>\`.
+- Prefer \`line\` or \`area\` for trends, \`column\` or \`bar\` for comparisons and rankings, \`pie\` for a small part-to-whole composition, \`scatter\` for correlation, \`histogram\`/\`boxplot\`/\`violin\` for distributions, and \`table\` when exact lookup matters more than shape. Other supported types include \`radar\`, \`funnel\`, \`waterfall\`, \`dual-axes\`, \`treemap\`, \`sankey\`, \`venn\`, \`liquid\`, and \`word-cloud\`.
+- Put \`data\` before display properties so the first complete item can render early. Use \`-\` for array items, two additional spaces for item properties, and quote values containing spaces.
+- Follow GPT-Vis field schemas exactly: \`line/area\` use \`time,value[,group]\`; \`column/bar/pie/funnel/boxplot/violin\` use \`category,value[,group]\`; \`scatter\` uses \`x,y[,group]\`; \`radar\` uses \`name,value[,group]\`; \`sankey\` uses \`source,target,value\`; \`treemap\` uses \`name,value[,children]\`; \`word-cloud\` uses \`text,value\`; \`histogram\` uses a simple numeric array; and \`table\` may use descriptive column keys.
+- Use ASCII field ids and numeric quantitative values without units. Put units in \`title\`, \`axisXTitle\`, or \`axisYTitle\`. Include a concise \`title\`, but do not emit \`theme\`, \`width\`, \`height\`, HTML, SVG, or scripts; the plugin owns layout and live theme adaptation.
+- Do not repeat the same conclusion in both narrative and chart text.
 - Preserve the user's language. Never include secrets, executable markup, javascript/file URLs, localhost/private-network URLs, or unsupported facts.
-
-Legacy \`ava ntv\` and \`ava chart\` documents remain renderable, but generate the unified \`ava\` structure above for new answers.`
+`
 
 const ASSET_ROUTE_PATH = '/plugins/dsh-antv-ava/assets'
 

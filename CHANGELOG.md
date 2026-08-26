@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Render chart sections with official GPT-Vis syntax instead of generating G2 specifications through AVA Advisor.
+- Stream complete chart data lines into one mounted GPT-Vis instance while the model response is still generating.
+- Keep live DSH light/dark theme adaptation and run AVA statistical insight extraction only after chart data settles.
+- Expand chart coverage through GPT-Vis while retaining AVA narrative text visualization and the unified conversation-flow output.
+
 ## 0.1.0
 
 First public release of `dsh-antv-ava`.

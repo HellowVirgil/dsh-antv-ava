@@ -18,7 +18,7 @@ describe('host plugin', () => {
     expect(section).toBeDefined()
     const text = typeof section?.text === 'string' ? section.text : ''
     expect(text).toContain('```ava')
-    for (const value of ['Do not ask the user to choose a mode', 'narrative', 'chart', 'NarrativeTextSpec', 'metric-value', 'delta positive', 'proportion', 'quantitative', 'dimension', 'measure', 'Comparison', 'Trend']) {
+    for (const value of ['Do not ask the user to choose a mode', 'narrative', 'chart', 'NarrativeTextSpec', 'metric-value', 'delta positive', 'proportion', 'GPT-Vis', 'vis column', 'axisYTitle', 'complete data lines', 'line', 'pie']) {
       expect(text).toContain(value)
     }
     expect(text).toContain('narrative` plus `chart` renders both')

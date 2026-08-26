@@ -17,6 +17,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/AntV_AVA-3.4.1-1677ff" alt="AntV AVA 3.4.1">
+  <img src="https://img.shields.io/badge/AntV_GPT--Vis-1.0.0-1677ff" alt="AntV GPT-Vis 1.0.0">
   <img src="https://img.shields.io/badge/streaming-supported-16a34a" alt="Streaming supported">
   <img src="https://img.shields.io/badge/theme-light%20%7C%20dark-8b5cf6" alt="Light and dark themes">
 </p>
@@ -27,17 +28,18 @@
   <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="dsh-antv-ava rendering data interpretation and an AntV chart inside a DSH conversation" width="100%">
 </p>
 
-Narrative text and charts flow directly with the model reply instead of appearing in separate cards. Text can render progressively while the model is generating, and charts join the same conversation once their data is complete.
+Narrative text and charts flow directly with the model reply instead of appearing in separate cards. Text renders phrase by phrase, while GPT-Vis charts appear as soon as usable data arrives and keep updating during generation.
 
 ## Core features
 
 - Automatic presentation selection: the model chooses NTV, a chart, or both based on the question and data.
 - Streaming data interpretation: metrics, changes, shares, category details, and conclusions render phrase by phrase.
-- AntV charts: AVA Advisor / Insight recommends a visualization and AntV G2 renders it.
+- Streaming AntV charts: the model emits official GPT-Vis syntax, and complete data lines update the mounted chart before the answer finishes.
+- AVA insights: AVA inspects stable tabular results after generation and can surface significant trends, outliers, changes, shares, and correlations.
 - Conversation-native design: inherits DSH typography, font size, line height, color, width, and Markdown spacing.
 - Live theme adaptation: chart axes, labels, and grid lines update when switching between light and dark themes without a page refresh.
 - Semantic data expression: highlighted metrics, direction arrows, absolute changes, rates, contributions, and proportion micro charts.
-- Lazy loading: the AVA/G2 chart engine loads only when an answer contains a chart.
+- Lazy loading: the AVA/GPT-Vis chart engine loads only when an answer contains a chart.
 - Safe parsing: source-size limits and blocking for executable markup, dangerous URLs, and private-network resources.
 
 ## Installation
@@ -98,14 +100,11 @@ NTV supports:
 - Shares, contributions, and inline proportion micro charts
 - Headlines, heading levels 1–6, paragraphs, bullets, sections, and dividers
 
-Charts support common AVA analysis purposes:
+Charts use GPT-Vis syntax and support:
 
-- Comparison
-- Trend
-- Distribution
-- Rank
-- Proportion
-- Composition
+- Line, area, column, bar, pie, scatter, radar, funnel, waterfall, and dual-axis charts
+- Histograms, boxplots, violin plots, treemaps, Sankey diagrams, Venn diagrams, liquid charts, word clouds, and tables
+- Additional GPT-Vis relationship diagrams accepted by the renderer when they are useful for data interpretation
 
 ## Optional Skill installation
 
@@ -132,22 +131,15 @@ narrative
     text , up from Q1 by
     ratio positive 76.6%
 chart
-  title Quarterly revenue trend
-  purpose Trend
-  fields
-    - id quarter
-      label Quarter
-      type categorical
-      role dimension
-    - id revenue
-      label Revenue (M)
-      type quantitative
-      role measure
+  vis line
   data
-    - quarter Q1
-      revenue 1.28
-    - quarter Q4
-      revenue 2.26
+    - time Q1
+      value 1.28
+    - time Q4
+      value 2.26
+  title "Quarterly revenue trend"
+  axisXTitle Quarter
+  axisYTitle "Revenue (M)"
 ```
 ````
 
@@ -177,4 +169,4 @@ pnpm run verify:pack
 
 ## License
 
-MIT. AntV AVA and AntV G2 are also licensed under MIT.
+MIT. AntV AVA and AntV GPT-Vis are also licensed under MIT.

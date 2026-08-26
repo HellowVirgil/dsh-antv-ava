@@ -1,4 +1,4 @@
-import type { AvaDocument } from './ava-source.ts'
+import type { AvaDocument, AvaField } from './ava-source.ts'
 
 const PLUGIN_ID = 'dsh-antv-ava'
 const ASSET_DIR = `/plugins/${PLUGIN_ID}/assets`
@@ -17,23 +17,24 @@ export interface AvaPattern {
 }
 
 export interface AvaAnalysis {
-  advice: {
-    type: string
-    score: number
-    spec: Record<string, unknown>
-  }
+  fields: AvaField[]
   patterns: AvaPattern[]
 }
 
 export interface AvaChart {
-  options(spec: Record<string, unknown>): AvaChart
-  render(): Promise<unknown>
+  render(config: string | Record<string, unknown>): void
   destroy(): void
 }
 
 export interface AvaEngine {
   analyze(document: AvaDocument): AvaAnalysis
-  Chart: new (options: Record<string, unknown>) => AvaChart
+  GPTVis: new (options: {
+    container: HTMLElement
+    height?: number
+    locale?: string
+    theme?: 'default' | 'dark'
+    wrapper?: boolean
+  }) => AvaChart
 }
 
 export function avaAssetUrl(): string {
@@ -48,7 +49,7 @@ let pending: Promise<AvaEngine> | undefined
 export function loadAvaAsset(): Promise<AvaEngine> {
   if (pending !== undefined) return pending
   const existing = (window as unknown as AssetGlobal).__DshAntvAvaAssets__?.ava as AvaEngine | undefined
-  if (existing?.Chart !== undefined && existing.analyze !== undefined) {
+  if (existing?.GPTVis !== undefined && existing.analyze !== undefined) {
     pending = Promise.resolve(existing)
     return pending
   }
@@ -59,13 +60,13 @@ export function loadAvaAsset(): Promise<AvaEngine> {
     script.onload = () => {
       const assets = (window as unknown as AssetGlobal).__DshAntvAvaAssets__ ?? {}
       const engine = assets.ava as AvaEngine | undefined
-      if (engine?.Chart === undefined || engine.analyze === undefined) {
-        reject(new Error('AntV 引擎脚本已加载，但没有注册 AVA/G2 API'))
+      if (engine?.GPTVis === undefined || engine.analyze === undefined) {
+        reject(new Error('AntV 引擎脚本已加载，但没有注册 AVA/GPT-Vis API'))
         return
       }
       resolve(engine)
     }
-    script.onerror = () => reject(new Error('AntV AVA 引擎加载失败，请确认插件资源路由可用并重启 dsh web'))
+    script.onerror = () => reject(new Error('AntV AVA/GPT-Vis 引擎加载失败，请确认插件资源路由可用并重启 dsh web'))
     document.head.appendChild(script)
   })
   return pending

@@ -10,21 +10,15 @@ import { renderAvaFence } from '../src/client/fence-render.tsx'
 afterEach(cleanup)
 
 const VALID = `ava
-title 对比
-fields
-  - id category
-    label 类别
-    type categorical
-    role dimension
-  - id value
-    label 数值
-    type quantitative
-    role measure
-data
-  - category A
-    value 10
-  - category B
-    value 20`
+language zh-CN
+chart
+  vis column
+  data
+    - category A
+      value 10
+    - category B
+      value 20
+  title 对比`
 
 describe('registry fence renderer', () => {
   it('renders a valid settled fence', () => {

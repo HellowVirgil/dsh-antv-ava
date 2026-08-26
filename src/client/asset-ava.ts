@@ -1,5 +1,5 @@
 /** Lazy browser engine registered for the small DSH client adapter. */
-import { Chart } from '@antv/g2'
+import { GPTVis } from '@antv/gpt-vis/dist/esm/index.js'
 import { analyzeAvaDocument } from './ava-analysis.ts'
 
 interface AssetGlobal {
@@ -8,4 +8,4 @@ interface AssetGlobal {
 
 const host = globalThis as unknown as AssetGlobal
 const assets = host.__DshAntvAvaAssets__ ?? (host.__DshAntvAvaAssets__ = {})
-assets.ava = { analyze: analyzeAvaDocument, Chart }
+assets.ava = { analyze: analyzeAvaDocument, GPTVis }

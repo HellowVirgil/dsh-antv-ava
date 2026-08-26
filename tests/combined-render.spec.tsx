@@ -2,25 +2,21 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const chartSpies = vi.hoisted(() => ({
-  options: vi.fn(),
-  render: vi.fn().mockResolvedValue(undefined),
+  construct: vi.fn(),
+  render: vi.fn(),
   destroy: vi.fn(),
 }))
 
 vi.mock('../src/client/asset-loader.ts', () => ({
   loadAvaAsset: () => Promise.resolve({
-    analyze: () => ({
-      advice: { type: 'line_chart', score: 1, spec: { type: 'line' } },
-      patterns: [],
-    }),
-    Chart: class MockChart {
-      options(spec: Record<string, unknown>): this {
-        chartSpies.options(spec)
-        return this
+    analyze: () => ({ fields: [], patterns: [] }),
+    GPTVis: class MockGPTVis {
+      constructor(options: Record<string, unknown>) {
+        chartSpies.construct(options)
       }
 
-      render(): Promise<unknown> {
-        return chartSpies.render()
+      render(spec: string): void {
+        chartSpies.render(spec)
       }
 
       destroy(): void {
@@ -40,26 +36,17 @@ narrative
     text Q4 收入达到
     metric-value 226万
 chart
-  title 季度收入趋势
-  purpose Trend
-  fields
-    - id quarter
-      label 季度
-      type temporal
-      role dimension
-    - id revenue
-      label 收入（万元）
-      type quantitative
-      role measure
+  vis line
   data
-    - quarter Q1
-      revenue 128
-    - quarter Q2
-      revenue 164`
+    - time Q1
+      value 128
+    - time Q2
+      value 164
+  title "季度收入趋势"`
 
 afterEach(() => {
   cleanup()
-  chartSpies.options.mockClear()
+  chartSpies.construct.mockClear()
   chartSpies.render.mockClear()
   chartSpies.destroy.mockClear()
   document.documentElement.style.backgroundColor = ''
@@ -77,18 +64,29 @@ describe('unified AVA rendering', () => {
     expect(container.querySelector('.dsh-antv-ava__toolbar')).toBeNull()
   })
 
-  it('rerenders G2 with the matching theme when Harness changes appearance', async () => {
+  it('rerenders the same GPT-Vis instance with the matching live theme', async () => {
     document.documentElement.style.backgroundColor = 'rgb(255, 255, 255)'
     render(<AvaBlock source={COMBINED} settled />)
 
     await waitFor(() => {
-      expect(chartSpies.options).toHaveBeenCalledWith(expect.objectContaining({ theme: 'classic' }))
+      expect(chartSpies.render.mock.calls.at(-1)?.[0]).toContain('theme default')
     })
 
     document.documentElement.style.backgroundColor = 'rgb(18, 18, 20)'
     await waitFor(() => {
-      expect(chartSpies.options.mock.calls.at(-1)?.[0]).toEqual(expect.objectContaining({ theme: 'classicDark' }))
+      expect(chartSpies.render.mock.calls.at(-1)?.[0]).toContain('theme dark')
     }, { timeout: 1_500 })
-    expect(chartSpies.destroy).toHaveBeenCalled()
+    expect(chartSpies.construct).toHaveBeenCalledTimes(1)
+  })
+
+  it('streams complete GPT-Vis data lines into one mounted renderer', async () => {
+    const first = COMBINED.replace('    - time Q2\n      value 164\n', '')
+    const view = render(<AvaBlock source={`${first}\n`} settled={false} />)
+    await waitFor(() => expect(chartSpies.render).toHaveBeenCalled())
+    expect(chartSpies.render.mock.calls.at(-1)?.[0]).toContain('time Q1')
+
+    view.rerender(<AvaBlock source={`${COMBINED}\n`} settled={false} />)
+    await waitFor(() => expect(chartSpies.render.mock.calls.at(-1)?.[0]).toContain('time Q2'))
+    expect(chartSpies.construct).toHaveBeenCalledTimes(1)
   })
 })

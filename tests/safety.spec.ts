@@ -5,25 +5,17 @@ import {
 } from '../src/client/ava-source.ts'
 
 const VALID = `ava
-title 季度收入趋势
-purpose Trend
 language zh-CN
-fields
-  - id quarter
-    label 季度
-    type temporal
-    role dimension
-  - id revenue
-    label 收入（万元）
-    type quantitative
-    role measure
-data
-  - quarter Q1
-    revenue 128
-  - quarter Q2
-    revenue 164
-  - quarter Q3
-    revenue 191`
+chart
+  vis line
+  data
+    - time Q1
+      value 128
+    - time Q2
+      value 164
+    - time Q3
+      value 191
+  title "季度收入趋势"`
 
 const UNIFIED_NARRATIVE = `ava
 language zh-CN
@@ -36,33 +28,24 @@ narrative
     ratio positive 7.05%`
 
 const UNIFIED_CHART = `chart
-  title 季度收入趋势
-  purpose Trend
-  fields
-    - id quarter
-      label 季度
-      type temporal
-      role dimension
-    - id revenue
-      label 收入（万元）
-      type quantitative
-      role measure
+  vis line
   data
-    - quarter Q1
-      revenue 128
-    - quarter Q2
-      revenue 164`
+    - time Q1
+      value 128
+    - time Q2
+      value 164
+  title "季度收入趋势"`
 
 describe('parseAvaSource', () => {
-  it('parses a complete AVA document', () => {
+  it('parses official GPT-Vis syntax inside the unified AVA document', () => {
     const result = parseAvaSource(VALID, true)
     expect(result.ok).toBe(true)
     if (result.ok) {
       expect(result.value.mode).toBe('chart')
       if (result.value.mode !== 'chart') throw new Error('expected chart mode')
-      expect(result.value.purpose).toBe('Trend')
-      expect(result.value.fields).toHaveLength(2)
-      expect(result.value.data[1]).toEqual({ quarter: 'Q2', revenue: 164 })
+      expect(result.value.chartType).toBe('line')
+      expect(result.value.title).toBe('季度收入趋势')
+      expect(result.value.syntax).toContain('value 164')
     }
   })
 
@@ -108,17 +91,17 @@ bullet
     expect(combined.ok && combined.value.mode).toBe('combined')
     if (!combined.ok || combined.value.mode !== 'combined') return
     expect(combined.value.narrative.spec.headline?.phrases[0]?.value).toBe('订单保持增长')
-    expect(combined.value.chart.data).toHaveLength(2)
+    expect(combined.value.chart.syntax).toContain('time Q2')
   })
 
   it('keeps streaming narrative visible until the supplementary chart is complete', () => {
-    const result = parseAvaSource(`${UNIFIED_NARRATIVE}\nchart\n  title 尚未完成\n`, false)
+    const result = parseAvaSource(`${UNIFIED_NARRATIVE}\nchart\n  vis line\n  data\n`, false)
     expect(result.ok).toBe(true)
     if (result.ok) expect(result.value.mode).toBe('ntv')
   })
 
   it('rejects an invalid settled section in the unified document', () => {
-    const result = parseAvaSource(`${UNIFIED_NARRATIVE}\nchart\n  title 缺少字段和数据`, true)
+    const result = parseAvaSource(`${UNIFIED_NARRATIVE}\nchart\n  vis line\n  data`, true)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.reason).toContain('chart 区段无效')
   })
@@ -143,23 +126,37 @@ paragraph
     if (!result.ok) expect(result.reason).toContain('无法识别')
   })
 
-  it('progressively returns complete rows while streaming', () => {
-    const partial = `${VALID}\n  - quarter Q4\n    revenue 2`
+  it('progressively exposes only complete GPT-Vis lines while streaming', () => {
+    const partial = `${VALID.replace('\n  title "季度收入趋势"', '')}\n    - time Q4\n      value 2`
     const result = parseAvaSource(partial, false)
     expect(result.ok).toBe(true)
-    if (result.ok) expect(result.value.data).toHaveLength(3)
+    if (!result.ok || result.value.mode !== 'chart') return
+    expect(result.value.syntax).toContain('time Q4')
+    expect(result.value.syntax).not.toContain('value 2')
   })
 
-  it('requires every settled row to contain every field', () => {
-    const result = parseAvaSource(`${VALID}\n  - quarter Q4`, true)
+  it('rejects an unsupported settled GPT-Vis chart type', () => {
+    const result = parseAvaSource(VALID.replace('vis line', 'vis unknown-chart'), true)
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.reason).toContain('revenue')
+    if (!result.ok) expect(result.reason).toContain('不支持')
   })
 
-  it('rejects non-numeric measure values', () => {
-    const result = parseAvaSource(VALID.replace('revenue 191', 'revenue 很高'), true)
+  it('rejects a settled chart without renderable data', () => {
+    const result = parseAvaSource(`ava\nchart\n  vis line\n  data`, true)
     expect(result.ok).toBe(false)
-    if (!result.ok) expect(result.reason).toContain('数值')
+    if (!result.ok) expect(result.reason).toContain('可渲染数据')
+  })
+
+  it('enforces GPT-Vis field schemas for settled charts', () => {
+    const result = parseAvaSource(VALID.replaceAll('time', 'quarter').replaceAll('value', 'revenue'), true)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toContain('字段约定')
+  })
+
+  it('requires numeric GPT-Vis measure values', () => {
+    const result = parseAvaSource(VALID.replace('value 191', 'value 很高'), true)
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.reason).toContain('字段约定')
   })
 
   it.each([
@@ -176,7 +173,7 @@ paragraph
   })
 
   it('caps source size', () => {
-    const result = parseAvaSource(`${VALID}\ndescription ${'x'.repeat(MAX_AVA_SOURCE_LENGTH)}`, true)
+    const result = parseAvaSource(`${VALID}\n${'x'.repeat(MAX_AVA_SOURCE_LENGTH)}`, true)
     expect(result.ok).toBe(false)
   })
 })

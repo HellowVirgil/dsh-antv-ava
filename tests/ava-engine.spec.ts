@@ -3,27 +3,30 @@ import { analyzeAvaDocument } from '../src/client/ava-analysis.ts'
 import type { AvaDocument } from '../src/client/ava-source.ts'
 
 describe('AVA engine adapter', () => {
-  it('recommends a renderable trend chart for quarterly text data', () => {
+  it('derives AVA insight fields from GPT-Vis tabular syntax', () => {
     const document: AvaDocument = {
       mode: 'chart',
+      chartType: 'line',
+      syntax: `vis line
+data
+  - time Q1
+    value 128
+  - time Q2
+    value 164
+  - time Q3
+    value 191
+  - time Q4
+    value 226
+title "季度收入趋势"`,
       title: '季度收入趋势',
-      purpose: 'Trend',
       language: 'zh-CN',
-      fields: [
-        { id: 'quarter', label: '季度', type: 'temporal', role: 'dimension' },
-        { id: 'revenue', label: '收入（万元）', type: 'quantitative', role: 'measure' },
-      ],
-      data: [
-        { quarter: 'Q1', revenue: 128 },
-        { quarter: 'Q2', revenue: 164 },
-        { quarter: 'Q3', revenue: 191 },
-        { quarter: 'Q4', revenue: 226 },
-      ],
     }
 
     const result = analyzeAvaDocument(document)
-    expect(result.advice.type).toBe('line_chart')
-    expect(result.advice.spec.type).toBe('line')
-    expect(result.advice.spec.encode).toEqual(expect.objectContaining({ x: 'quarter', y: 'revenue' }))
+    expect(result.fields).toEqual([
+      expect.objectContaining({ id: 'time', role: 'dimension' }),
+      expect.objectContaining({ id: 'value', role: 'measure' }),
+    ])
+    expect(Array.isArray(result.patterns)).toBe(true)
   })
 })
