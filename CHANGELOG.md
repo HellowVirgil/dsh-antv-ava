@@ -21,6 +21,5 @@ First public release of `dsh-antv-ava`.
 ### Compatibility and safety
 
 - Support both current DSH fence rendering and the DOM fallback used by older hosts.
-- Keep legacy `ava ntv`, `ava chart`, and bare chart-style `ava` documents renderable.
 - Validate source structure and enforce limits for source size, phrases, paragraphs, fields, and data rows.
 - Reject executable markup, dangerous URLs, and localhost or private-network resources.

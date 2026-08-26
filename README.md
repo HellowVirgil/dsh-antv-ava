@@ -151,8 +151,6 @@ chart
 ```
 ````
 
-Legacy `ava ntv`, `ava chart`, and bare chart-style `ava` content remains renderable.
-
 ## Scope
 
 Use the plugin for evidence-backed KPIs, business analysis, trends, shares, rankings, and category breakdowns. It does not invent values for visualization and never executes arbitrary HTML, SVG, or scripts emitted by the model.
