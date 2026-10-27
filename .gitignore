@@ -7,3 +7,4 @@ lib/
 coverage/
 .DS_Store
 .e2e-artifacts/
+.release-artifacts/

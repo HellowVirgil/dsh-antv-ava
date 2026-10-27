@@ -86,13 +86,13 @@ async function serveAvaAsset(req: IncomingMessage, res: ServerResponse): Promise
     res.end()
     return
   }
-  if (pathname !== `${ASSET_ROUTE_PATH}/ava.js`) {
+  if (![`${ASSET_ROUTE_PATH}/ava.js`, `${ASSET_ROUTE_PATH}/insights.js`].includes(pathname)) {
     res.writeHead(404)
     res.end()
     return
   }
   try {
-    const path = fileURLToPath(new URL('./assets/ava.js', import.meta.url))
+    const path = fileURLToPath(new URL(`./assets/${pathname.endsWith('/insights.js') ? 'insights' : 'ava'}.js`, import.meta.url))
     const body = await readFile(path)
     res.writeHead(200, {
       'content-type': 'text/javascript; charset=utf-8',

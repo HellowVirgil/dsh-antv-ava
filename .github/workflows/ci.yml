@@ -34,3 +34,6 @@ jobs:
 
       - name: Verify package
         run: pnpm run verify:pack
+
+      - name: Verify runtime distribution
+        run: pnpm run pack:runtime

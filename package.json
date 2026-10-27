@@ -1,6 +1,6 @@
 {
   "name": "dsh-antv-ava",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AntV AVA and GPT-Vis plugin for DeepSeek Harness: stream data-heavy answers as narrative text, charts, or both.",
   "author": "HellowVirgil",
   "repository": {
@@ -27,7 +27,11 @@
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./protocol": {
+      "types": "./lib/types/protocol/index.d.ts",
+      "default": "./lib/protocol.js"
+    }
   },
   "files": [
     "lib",
@@ -43,10 +47,16 @@
   ],
   "scripts": {
     "build": "rm -rf lib && tsc -p tsconfig.json && tsdown",
-    "test": "vitest run",
-    "check": "rm -rf lib && tsc -p tsconfig.json && vitest run && tsdown",
+    "test": "pnpm run build && pnpm run build:runtime && vitest run",
+    "check": "rm -rf lib && tsc -p tsconfig.json && tsdown && pnpm run build:runtime && vitest run",
     "verify:pack": "node scripts/verify-pack.mjs",
-    "prepack": "node scripts/prepack.mjs"
+    "prepack": "node scripts/prepack.mjs",
+    "build:runtime": "pnpm --filter dsh-antv-ava-runtime run build",
+    "test:runtime": "pnpm run build && pnpm run build:runtime && vitest run tests/runtime.spec.ts",
+    "dev": "pnpm run build && pnpm run build:runtime && node scripts/preview.mjs",
+    "verify:dsh": "pnpm run build && pnpm run build:runtime && node scripts/verify-dsh.mjs",
+    "verify:dsh-uploads": "pnpm run build && pnpm run build:runtime && node scripts/verify-dsh-uploads.mjs",
+    "pack:runtime": "pnpm run build:runtime && node scripts/pack-runtime.mjs"
   },
   "dependencies": {
     "@antv/ava": "3.4.1",
@@ -55,8 +65,8 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.8",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.8",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.1.0-rc.8 || 0.2.1-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.8 || 0.2.1-rc.2",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },

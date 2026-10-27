@@ -1,84 +1,50 @@
-import type { AvaDocument, AvaField } from './ava-source.ts'
-
 const PLUGIN_ID = 'dsh-antv-ava'
-const ASSET_DIR = `/plugins/${PLUGIN_ID}/assets`
-
-interface BootGraphLike {
-  entries?: Array<{ id?: string; rev?: string }>
-}
-
-interface AssetGlobal {
-  __DshAntvAvaAssets__?: Record<string, unknown>
-}
-
-export interface AvaPattern {
-  type: string
-  [key: string]: unknown
-}
-
-export interface AvaAnalysis {
-  fields: AvaField[]
-  patterns: AvaPattern[]
-}
-
-export interface AvaChart {
-  render(config: string | Record<string, unknown>): void
-  destroy(): void
-}
-
+interface AssetGlobal { __DshAntvAvaAssets__?: Record<string, unknown> }
+export interface AvaChart { render(config: string | Record<string, unknown>): void; destroy(): void }
 export interface AvaEngine {
-  analyze(document: AvaDocument): AvaAnalysis
-  GPTVis: new (options: {
-    container: HTMLElement
-    height?: number
-    locale?: string
-    theme?: 'default' | 'dark'
-    wrapper?: boolean
-  }) => AvaChart
+  GPTVis: new (options: { container: HTMLElement; height?: number; locale?: string; theme?: 'default' | 'dark'; wrapper?: boolean }) => AvaChart
 }
-
-export function avaAssetUrl(): string {
-  const graph = (window as unknown as { __DSH_BOOT__?: BootGraphLike }).__DSH_BOOT__
+export function avaAssetUrl(name: 'ava' | 'insights' = 'ava'): string {
+  const graph = (window as unknown as { __DSH_BOOT__?: { entries?: Array<{ id?: string; rev?: string }> } }).__DSH_BOOT__
   const rev = graph?.entries?.find(entry => entry.id === PLUGIN_ID)?.rev
-  const suffix = rev === undefined ? '' : `?rev=${encodeURIComponent(rev)}`
-  return `${ASSET_DIR}/ava.js${suffix}`
+  return `/plugins/${PLUGIN_ID}/assets/${name}.js${rev === undefined ? '' : `?rev=${encodeURIComponent(rev)}`}`
 }
-
-let pending: Promise<AvaEngine> | undefined
-
-export function loadAvaAsset(): Promise<AvaEngine> {
-  if (pending !== undefined) return pending
-  const existing = (window as unknown as AssetGlobal).__DshAntvAvaAssets__?.ava as AvaEngine | undefined
-  if (existing?.GPTVis !== undefined && existing.analyze !== undefined) {
-    pending = Promise.resolve(existing)
-    return pending
-  }
-  pending = new Promise<AvaEngine>((resolve, reject) => {
+const pending = new Map<string, Promise<unknown>>()
+export function loadAsset(name: 'ava' | 'insights'): Promise<unknown> {
+  const existing = (window as unknown as AssetGlobal).__DshAntvAvaAssets__?.[name]
+  if (existing) return Promise.resolve(existing)
+  const current = pending.get(name)
+  if (current) return current
+  const promise = new Promise<unknown>((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = avaAssetUrl()
-    script.async = true
+    let timer: ReturnType<typeof setTimeout>
+    const fail = (): void => { clearTimeout(timer); script.remove(); reject(new Error('AntV 资源加载失败，可重试加载。')) }
+    script.src = avaAssetUrl(name); script.async = true
     script.onload = () => {
-      const assets = (window as unknown as AssetGlobal).__DshAntvAvaAssets__ ?? {}
-      const engine = assets.ava as AvaEngine | undefined
-      if (engine?.GPTVis === undefined || engine.analyze === undefined) {
-        reject(new Error('AntV 引擎脚本已加载，但没有注册 AVA/GPT-Vis API'))
-        return
-      }
-      resolve(engine)
+      clearTimeout(timer)
+      const engine = (window as unknown as AssetGlobal).__DshAntvAvaAssets__?.[name]
+      if (!engine) fail(); else resolve(engine)
     }
-    script.onerror = () => reject(new Error('AntV AVA/GPT-Vis 引擎加载失败，请确认插件资源路由可用并重启 dsh web'))
+    script.onerror = fail
+    timer = setTimeout(fail, 20_000)
     document.head.appendChild(script)
-  })
-  return pending
+  }).catch(reason => { pending.delete(name); throw reason })
+  pending.set(name, promise)
+  return promise
 }
-
+export async function loadAvaAsset(): Promise<AvaEngine> {
+  const value = await loadAsset('ava') as AvaEngine
+  if (typeof value.GPTVis !== 'function') {
+    pending.delete('ava')
+    delete (window as unknown as AssetGlobal).__DshAntvAvaAssets__?.ava
+    throw new Error('GPT-Vis API unavailable')
+  }
+  return value
+}
 export function prefetchAvaAsset(): void {
   if (typeof document === 'undefined') return
   const href = avaAssetUrl()
-  if (document.head.querySelector(`link[rel="prefetch"][href="${href}"]`) !== null) return
-  const link = document.createElement('link')
-  link.rel = 'prefetch'
-  link.as = 'script'
-  link.href = href
+  if (document.head.querySelector(`link[rel="prefetch"][href="${href}"]`)) return
+  const link = document.createElement('link'); link.rel = 'prefetch'; link.as = 'script'; link.href = href
   document.head.appendChild(link)
 }

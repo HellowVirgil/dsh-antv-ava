@@ -17,6 +17,9 @@ jobs:
     name: Publish ${{ github.event.release.tag_name }}
     runs-on: ubuntu-latest
     environment: npm
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v7
@@ -79,6 +82,15 @@ jobs:
 
       - name: Verify package
         run: pnpm run verify:pack
+
+      - name: Pack optional runtime from the release commit
+        run: pnpm run pack:runtime
+
+      - name: Attach immutable runtime distribution
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: node scripts/upload-release-assets.mjs
 
       - name: Publish package
         env:

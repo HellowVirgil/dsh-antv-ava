@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0 — 2026-10-27
+
+### Added
+
+- AVA v4 JSON/result contracts, value references, paginated data tables, CSV export, truncation notices and source/query evidence.
+- Optional runtime 0.1.0 distributed as a GitHub Release asset, using AVA 4.0.0-beta.2 for CSV/JSON/XLSX, DuckDB queries, semantic metadata, cancellation and durable result replay.
+- Current-session workspace paths and admitted file attachments, including streamed byte/digest verification without copying uploads into the workspace.
+- A live implementation preview and isolated DSH integration checks.
+
+### Changed
+
+- Own the narrative types and retain legacy fences through a compatibility adapter.
+- Separate chart rendering, theme updates and explicitly requested AVA 3 statistics; failed chart assets can be retried independently.
+- Verify DSH 0.2.1-rc.2 alongside 0.1.0-rc.8 and document the two-component installation.
+
+### Fixed
+
+- Recognize validated AVA content under DSH 0.2 generic code-block banners; preserve explicit language hints and ignore renderer-owned code blocks.
+- Keep old/duplicate stream events from overwriting newer or terminal results.
+- Prevent private runtime storage and other-session attachments from being treated as authorized analysis inputs.
+
 ## 0.2.0
 
 ### Changed

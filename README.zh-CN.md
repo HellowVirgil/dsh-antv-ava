@@ -5,7 +5,7 @@
 <h1 align="center">dsh-antv-ava</h1>
 
 <p align="center">
-  让 DeepSeek Harness 自动将数据回答呈现为流式叙事文本、AntV 图表，或两者的自然组合。
+  在 DeepSeek Harness 中展示数据结论与图表，按需读取上传文件并执行真实分析。
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/AntV_AVA-3.4.1-1677ff" alt="AntV AVA 3.4.1">
+  <img src="https://img.shields.io/badge/AVA_Runtime-4.0.0--beta.2-1677ff" alt="Optional AVA 4.0.0-beta.2 runtime">
   <img src="https://img.shields.io/badge/AntV_GPT--Vis-1.0.0-1677ff" alt="AntV GPT-Vis 1.0.0">
   <img src="https://img.shields.io/badge/streaming-supported-16a34a" alt="支持流式渲染">
   <img src="https://img.shields.io/badge/theme-light%20%7C%20dark-8b5cf6" alt="支持亮色与暗色主题">
@@ -25,148 +25,128 @@
 ## 效果预览
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="dsh-antv-ava 在 DSH 对话中渲染数据解读和 AntV 图表" width="100%">
+  <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="DSH 对话中的叙事文本与 AntV 图表" width="100%">
 </p>
 
-叙事文本和图表会直接融入模型回复，不使用独立卡片。文本按短语逐步出现，GPT-Vis 图表在获得可用数据后就开始呈现，并在生成过程中持续更新。
-
-## 核心功能
-
-- 自动选择表达方式：模型根据问题和数据决定使用 NTV、图表或两者组合。
-- 流式数据解读：指标、变化率、占比、分类明细和结论按短语增量渲染。
-- 流式 AntV 图表：模型生成 GPT-Vis 官方 syntax，完整数据行会在回答结束前持续更新同一个图表实例。
-- AVA 数据洞察：生成稳定后，AVA 会分析表格数据中的趋势、异常、变化、占比和相关性等显著模式。
-- 对话流设计：继承 DSH 的字体、字号、行高、颜色、宽度和 Markdown 间距。
-- 实时主题适配：切换亮色或暗色主题后，图表坐标轴、标签和网格线会同步更新，无需刷新页面。
-- 语义数据表达：支持指标高亮、涨跌箭头、绝对变化、变化率、贡献度和占比微图。
-- 按需加载：只有回答包含图表时才加载 AVA/GPT-Vis 图表引擎。
-- 安全解析：限制输入规模，并拒绝可执行标记、危险 URL 和私网资源。
+文字和图表直接融入对话。已有数字可以逐句、逐行呈现；文件分析则先执行查询，再展示保存的结果、数据表与计算依据。
 
 ## 安装
 
+| 组件 | 作用 | 运行要求 |
+| --- | --- | --- |
+| `dsh-antv-ava` | 叙事、图表、数据表、结果快照展示 | Node.js ≥20.11 |
+| `dsh-antv-ava-runtime`（可选） | 上传附件与工作区文件、AVA v4 / DuckDB 查询、结果保存 | Node.js ≥22.13 |
+
+只需要把已有数字画成图表时，安装主插件：
+
 ```bash
-dsh plugin --profile web add dsh-antv-ava
+dsh plugin --profile web add dsh-antv-ava@0.3.0
 ```
 
-安装后重启 `dsh web`，再重新加载页面。插件会自动向模型注入所需的输出约定，普通用户不需要额外安装 Skill，也不需要手写 DSL。
+需要粘贴/上传文件并实际分析时，再安装运行时：
+
+```bash
+dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releases/download/v0.3.0/dsh-antv-ava-runtime-0.1.0.tgz
+```
+
+本版主包通过 npm 分发，runtime 通过同一 [GitHub Release](https://github.com/HellowVirgil/dsh-antv-ava/releases/tag/v0.3.0) 的附件分发，未单独发布到 npm。runtime 依赖同版本主包的协议；两个插件分别在 web profile 中启用。
+
+已验证 DSH `0.1.0-rc.8` 和 `0.2.1-rc.2`；粘贴/上传文件使用已具备文件附件能力的 `0.2.1-rc.2`。安装后重启 `dsh web` 并刷新页面。首次访问请使用启动时打印的完整登录地址。AVA 不需要额外模型密钥，分析规划使用 DSH 已配置的模型。
 
 ## 使用方式
 
-安装完成后直接用自然语言提问即可。
+**已有数字：**
 
-### 数据解读
+> 分析 Q1 到 Q4 的收入变化，并画出趋势：Q1 128 万、Q2 164 万、Q3 191 万、Q4 226 万。
 
-```text
-解读以下经营数据，给出适合快速阅读的核心结论：
-本月订单总量 1.98 亿，同比增长 7.05%……
-```
+**粘贴或上传 Excel：**
 
-模型通常会返回流式 NTV，突出指标、变化、占比和分类结论。
+> 使用 AVA 分析刚上传的 sales.xlsx，按产品汇总 revenue，生成柱状图并解释结果。
 
-### 数据解读和图表
+**当前工作区中的文件：**
 
-```text
-分析 Q1 到 Q4 的收入变化，并选择合适的方式进行可视化：
-Q1 128 万、Q2 164 万、Q3 191 万、Q4 226 万。
-```
+> 使用 AVA 分析 tests/fixtures/sales.xlsx，按产品汇总 revenue。
 
-当趋势或比较通过图形更容易理解时，模型会组合叙事文本和图表。
+相对路径以当前 DSH 会话的工作区为准。上传文件可直接读取，无需复制到项目或临时目录。插件仅接纳当前会话的正式附件记录；同名附件有歧义时会要求明确选择。
 
-### 只生成图表
+模型根据内容选择叙事文本、图表或两者组合。只想要图表时直接说明，无需手写输出协议或额外安装 Skill。
 
-```text
-把下面的数据画成趋势图，只需要图表：……
-```
+## 当前能力
 
-用户明确要求图表时，模型可以仅输出图表，不重复生成解释文本。
+- **流式表达**：指标、同比环比、占比和结论按完整短语出现；旧内联图表随完整数据行更新。
+- **文件分析**：可选运行时支持 CSV、JSON、XLSX，读取结构与统计概况，执行只读 DuckDB SQL。
+- **结果一致性**：叙事数值和图表绑定到同一份查询结果；查看数据、分页、下载 CSV 和复查查询均不重新计算。
+- **历史回放**：结果快照保存在宿主，关闭数据集或重启运行时后仍可展示。
+- **主题与降级**：继承 DSH 排版，支持亮暗主题；图表失败时保留数据表，并可单独重试。
+- **可选统计**：旧内联图表保留 AVA 3.4.1 的统计模式计算，需手动触发；主题切换、缩放和消息加载不会自动分析。
+- **资源控制**：独立计算进程、取消与超时清理、输入大小和查询结果限制；截断结果明确标识。
 
-## 自动输出规则
+图表使用 GPT-Vis 1.0.0。旧内联格式保留已有图类型；新的 JSON/结果绑定入口先支持 line、bar、column、pie、scatter、histogram、waterfall、table。上传支持与限制、目录配置、存储和权限说明见 [runtime 文档](https://github.com/HellowVirgil/dsh-antv-ava/blob/v0.3.0/runtime/README.md)。
 
-| 内容特点 | 常见结果 |
-| --- | --- |
-| KPI、同比环比、占比、分类拆解、数据结论 | NTV |
-| 趋势、比较、分布、排名、构成需要图形辅助 | NTV + Chart |
-| 明确要求只画图，或文字解释没有额外价值 | Chart |
+当前采用 DSH Agent 组织查询、AVA 执行计算的方式。额外模型驱动的 `analyze/recommend/suggest`、远程数据库、多数据源和 Python 引擎尚未接入。
 
-这是模型的自动选择，用户无需了解内部格式。
+## 输出协议与兼容
 
-## 支持的数据表达
-
-NTV 支持：
-
-- 主指标、次指标和维度值
-- 时间描述和趋势结论
-- 绝对变化和变化率
-- 占比、贡献度和占比微图
-- headline、1–6 级标题、段落、列表、分节和分隔线
-
-图表使用 GPT-Vis syntax，支持：
-
-- 折线图、面积图、柱状图、条形图、饼图、散点图、雷达图、漏斗图、瀑布图和双轴图
-- 直方图、箱线图、小提琴图、矩形树图、桑基图、韦恩图、水波图、词云和表格
-- 在适合数据解读时，也可以使用 GPT-Vis 支持的其他关系图
-
-## 可选：安装 Skill
-
-插件自身已经可以工作。只有当 Agent 环境会读取 `~/.agents/skills`，并且希望复杂数据任务获得更严格的事实保真和表达选择指导时，才需要安装仓库内附带的 Skill。
-
-```bash
-mkdir -p ~/.agents/skills/antv-ava
-cp SKILL.md ~/.agents/skills/antv-ava/SKILL.md
-```
-
-## 高级：统一 AVA 格式
-
-模型在一个 `ava` 围栏中按需生成 `narrative`、`chart` 或两者：
+保留 `ava`、`ava ntv`、`ava chart` 格式。例如：
 
 ````markdown
 ```ava
 ava
 language zh-CN
 narrative
-  headline 季度收入持续增长
+  headline 季度收入增长
   paragraph
     text Q4 收入达到
     metric-value 226万
-    text ，较 Q1 增长
-    ratio positive 76.6%
 chart
-  vis line
+  vis column
   data
-    - time Q1
+    - category Q1
       value 128
-    - time Q4
+    - category Q4
       value 226
-  title "季度收入趋势"
-  axisXTitle 季度
-  axisYTitle "收入（万元）"
+  title 季度收入
+  axisYTitle 收入（万元）
 ```
 ````
 
-## 适用范围
+新增入口：
 
-适合有明确数字依据的 KPI、经营分析、趋势、占比、排名和分类拆解。插件不会为了可视化补造数值，也不会执行模型输出的任意 HTML、SVG 或脚本。
+| 内容 | 用途 |
+| --- | --- |
+| `ava json` 后跟 JSON | GPT-Vis 配置或 AVA v4 的 `{ chartType, config }`；不执行其中的 HTML |
+| `ava answer` 后跟 JSON | 插件 `schemaVersion: 1` 文档，包含结果、数值引用和视图 |
+| `ava result <id>` | 读取宿主工具生成的展示快照，通常由模型直接使用工具返回内容 |
 
-缺少有效数字结构的流程、层级和路线图，更适合使用信息图类插件。
+由回答直接提供的快照会注明执行来源未验证。DSH 0.2 将未知语法显示为通用“代码块”时，兼容层通过严格的 AVA 内容校验识别；明确标注为其他语言的代码不接管。
 
-## 从源码安装
+## 从源码开发
 
 ```bash
 git clone https://github.com/HellowVirgil/dsh-antv-ava.git
 cd dsh-antv-ava
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run check
 dsh plugin --profile web add "link:$PWD"
+dsh plugin --profile web add "link:$PWD/runtime"
+pnpm dev
 ```
 
-## 开发
+`pnpm dev` 启动实现预览：使用合成数据执行真实 AVA 查询，关闭数据集后回放快照。
 
 ```bash
-pnpm test
-pnpm build
 pnpm run verify:pack
+pnpm run pack:runtime
+pnpm run verify:dsh
+pnpm run verify:dsh-uploads
 ```
+
+后两个检查需要已安装的 DSH；上传检查需要文件附件能力。可用 `AVA_TEST_DSH_BINARY` 指定目标 DSH 可执行文件。测试使用隔离上下文，不改动现有 web profile。附带的 [SKILL.md](./SKILL.md) 可供支持 Skill 的 Agent 使用，普通插件用户无需额外安装。
+
+## 发布
+
+GitHub Release 是入口。`publish.yml` 从同一个不可变 tag 安装、检查和打包，附加 runtime 压缩包与 SHA256SUMS，再通过 npm Trusted Publishing 发布主包。流程见 [AGENTS.md](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/AGENTS.md)。
 
 ## License
 
-MIT。AntV AVA 和 AntV GPT-Vis 也采用 MIT License。
+MIT。AntV AVA 和 AntV GPT-Vis 同样采用 MIT License。

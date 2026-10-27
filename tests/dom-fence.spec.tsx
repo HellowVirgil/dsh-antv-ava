@@ -52,6 +52,51 @@ afterEach(() => {
 })
 
 describe('DOM fallback', () => {
+  it.each(['代码块', 'Code block', 'Code'])('recognizes a validated result behind the DSH generic %s banner', async labelText => {
+    const { row, block, label } = codeBlock(`ava result ${'a'.repeat(64)}\n`, labelText)
+    label.parentElement!.setAttribute('data-code-block-banner', '')
+    document.body.appendChild(row)
+    const dispose = installDomFenceRenderer()
+    try {
+      await tick()
+      expect(block.style.display).toBe('none')
+      expect(row.querySelector('[data-testid="dom-ava"]')?.textContent).toContain('ava result')
+    } finally { dispose() }
+  })
+
+  it('recognizes legacy inline AVA behind the new generic banner', async () => {
+    const { row, block, label } = codeBlock(VALID, '代码块')
+    label.parentElement!.setAttribute('data-code-block-banner', '')
+    document.body.appendChild(row)
+    const dispose = installDomFenceRenderer()
+    try { await tick(); expect(block.style.display).toBe('none') } finally { dispose() }
+  })
+
+  it.each(['const example = "ava result abc"', 'ava result abc', 'ava json\n{invalid'])('leaves generic non-AVA or invalid content untouched', async raw => {
+    const { row, block, label } = codeBlock(raw, '代码块')
+    label.parentElement!.setAttribute('data-code-block-banner', '')
+    document.body.appendChild(row)
+    const dispose = installDomFenceRenderer()
+    try { await tick(); expect(block.style.display).toBe(''); expect(row.querySelector('.dsh-antv-ava-dom')).toBeNull() } finally { dispose() }
+  })
+
+  it('honors an explicit non-AVA language even behind a generic banner', async () => {
+    const { row, block, label, code } = codeBlock(`ava result ${'a'.repeat(64)}`, 'Code')
+    code.className = 'language-text'
+    label.parentElement!.setAttribute('data-code-block-banner', '')
+    document.body.appendChild(row)
+    const dispose = installDomFenceRenderer()
+    try { await tick(); expect(block.style.display).toBe('') } finally { dispose() }
+  })
+
+  it('never remounts code blocks inside its own fallback or evidence views', async () => {
+    const { row, block } = codeBlock(VALID, 'ava')
+    row.className = 'dsh-antv-ava-dom'
+    document.body.appendChild(row)
+    const dispose = installDomFenceRenderer()
+    try { await tick(); expect(block.style.display).toBe(''); expect(document.querySelectorAll('.dsh-antv-ava-dom')).toHaveLength(1) } finally { dispose() }
+  })
+
   it('takes over a settled ava fence', async () => {
     const { row, block } = codeBlock(VALID, 'ava')
     document.body.appendChild(row)

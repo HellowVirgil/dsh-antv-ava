@@ -31,7 +31,7 @@ function purityGate(): NonNullable<UserConfig['plugins']>[number] {
 
 const libConfig: UserConfig = {
   name: ID,
-  entry: { index: 'src/index.ts' },
+  entry: { index: 'src/index.ts', protocol: 'src/protocol/index.ts' },
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
@@ -90,4 +90,6 @@ const assetConfig: UserConfig = {
   outputOptions: { entryFileNames: '[name].js' },
 }
 
-export default [libConfig, clientConfig, assetConfig]
+const insightsConfig: UserConfig = { ...assetConfig, name: `${ID}/assets/insights`, entry: { 'assets/insights': 'src/client/asset-insights.ts' } }
+
+export default [libConfig, clientConfig, assetConfig, insightsConfig]

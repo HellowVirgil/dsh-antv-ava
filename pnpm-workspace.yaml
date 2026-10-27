@@ -1,5 +1,6 @@
 packages:
   - '.'
+  - 'runtime'
 
 autoInstallPeers: false
 minimumReleaseAge: 0

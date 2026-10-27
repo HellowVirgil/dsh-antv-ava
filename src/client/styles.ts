@@ -11,7 +11,7 @@ const CSS = `
 .dsh-antv-ava-flow__meta button,.dsh-antv-ava-flow__source-actions button{appearance:none;border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 30%,transparent);text-underline-offset:3px}
 .dsh-antv-ava-flow__meta button:hover:not(:disabled),.dsh-antv-ava-flow__source-actions button:hover{color:var(--dsw-alias-label-secondary,currentColor);text-decoration-color:currentColor}
 .dsh-antv-ava-flow__meta button:disabled{cursor:not-allowed;opacity:.4}
-.dsh-antv-ava-flow__canvas{min-width:320px;min-height:360px;width:100%;overflow:hidden}
+.dsh-antv-ava-flow__canvas{min-width:0;min-height:360px;width:100%;overflow:hidden}
 .dsh-antv-ava-flow__canvas canvas,.dsh-antv-ava-flow__canvas svg{display:block;max-width:100%}
 .dsh-antv-ava-flow__status{min-height:96px;display:flex;align-items:center;color:var(--dsw-alias-label-caption,color-mix(in srgb,currentColor 58%,transparent));font:var(--dsw-font-markdown-small,14px/24px -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif)}
 .dsh-antv-ava-flow__insights{margin-top:16px;color:inherit}
@@ -58,6 +58,33 @@ const CSS = `
 .dsh-antv-ava-ntv__source pre{max-height:260px;overflow:auto;margin:4px 0 0;padding:12px;border-radius:8px;background:color-mix(in srgb,currentColor 5%,transparent);color:inherit;font:var(--dsw-font-markdown-code-block-small,12px/18px ui-monospace,SFMono-Regular,Menlo,monospace);white-space:pre-wrap;word-break:break-word}
 .dsh-antv-ava-dom{min-width:0}
 @media (prefers-color-scheme:dark){.dsh-antv-ava__error{color:#fca5a5}.dsh-antv-ava-ntv__entity--metric_value{color:#4b91ff}.dsh-antv-ava-ntv__entity--contribute_ratio,.dsh-antv-ava-ntv__entity--trend_desc{color:#d8c3f3}.dsh-antv-ava-ntv__entity--positive{color:#fa541c}.dsh-antv-ava-ntv__entity--negative{color:#13a8a8}}
+.dsh-antv-ava-flow{--ava-accent:var(--dsw-alias-label-link,#1677ff);--ava-border:color-mix(in srgb,currentColor 16%,transparent);--ava-muted:var(--dsw-alias-label-caption,color-mix(in srgb,currentColor 65%,transparent))}
+.dsh-antv-ava-flow :where(button){font:inherit;color:inherit;background:transparent;border:1px solid var(--ava-border);border-radius:6px;padding:4px 9px;cursor:pointer}
+.dsh-antv-ava-flow button:disabled{opacity:.5;cursor:default}
+.dsh-antv-ava-flow :where(button,summary,[tabindex]):focus-visible{outline:2px solid var(--ava-accent);outline-offset:3px}
+.dsh-antv-ava-flow [hidden]{display:none!important}
+.dsh-antv-ava-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dsh-antv-ava-actions button[aria-pressed=true]{color:var(--ava-accent);font-weight:600}
+.dsh-antv-ava-flow__meta{flex-wrap:wrap}
+.dsh-antv-ava-table{margin:12px 0;min-width:0}
+.dsh-antv-ava-table__scroll{overflow:auto;max-height:480px;margin-bottom:12px}
+.dsh-antv-ava-table table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font:inherit}
+.dsh-antv-ava-table :where(th,td){text-align:start;border-bottom:1px solid var(--ava-border);padding:8px 12px;max-width:400px;overflow-wrap:anywhere}
+.dsh-antv-ava-table th{font-weight:600;white-space:nowrap}
+.dsh-antv-ava-evidence{margin:20px 0 8px;padding:12px 0;border-top:1px solid var(--ava-border);color:inherit}
+.dsh-antv-ava-evidence summary{cursor:pointer;color:var(--ava-muted)}
+.dsh-antv-ava-evidence dl{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px 16px}
+.dsh-antv-ava-evidence dt{color:var(--ava-muted)}
+.dsh-antv-ava-evidence dd{margin:0;overflow-wrap:anywhere}
+.dsh-antv-ava-evidence pre{max-height:280px;overflow:auto;padding:12px;background:color-mix(in srgb,currentColor 4%,transparent);white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+.dsh-antv-ava-notice{padding:10px 12px;border-inline-start:3px solid #b9812b;background:color-mix(in srgb,#b9812b 10%,transparent)}
+.dsh-antv-ava-scope{font-size:.85em;color:var(--ava-muted)}
+.dsh-antv-ava-metric{display:inline-flex;flex-direction:column;vertical-align:top;margin:12px 32px 20px 0;gap:4px}
+.dsh-antv-ava-metric>span{font-size:.85em;color:var(--ava-muted)}
+.dsh-antv-ava-metric strong{font-size:1.5em;font-variant-numeric:tabular-nums}
+.dsh-antv-ava-flow__chart h3{font-size:1.05em;margin:16px 0 8px}
+@media(prefers-reduced-motion:reduce){.dsh-antv-ava-flow *{animation:none!important;transition:none!important}}
+
 `
 
 export function ensureAvaStyles(): void {

@@ -3,25 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dsh-antv-ava visual smoke</title>
+    <title>DSH × AVA · 实现预览</title>
     <style>
-      html { color-scheme: light dark; }
-      body { margin: 0; padding: 32px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #f4f6f8; color: #172033; }
-      main { max-width: 1080px; margin: 0 auto; }
-      h1 { margin: 0 0 6px; font-size: 24px; }
-      p { margin: 0 0 18px; color: #667085; }
-      @media (prefers-color-scheme: dark) {
-        body { background: #111318; color: #f3f4f6; }
-        p { color: #98a2b3; }
-      }
+      body { margin: 0; background: transparent; }
+      button, select { font: inherit; color: inherit; background: transparent; border: 1px solid #8886; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+      h1, h2, h3 { line-height: 1.4; text-wrap: balance; }
     </style>
   </head>
   <body>
-    <main>
-      <h1>dsh-antv-ava</h1>
-      <p>AntV AVA 自动叙事、图表与组合渲染的本地视觉冒烟页</p>
-      <div id="root"></div>
-    </main>
+    <div id="root"></div>
     <script type="module" src="/site/main.tsx"></script>
   </body>
 </html>

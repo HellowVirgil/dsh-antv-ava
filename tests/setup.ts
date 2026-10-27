@@ -1,5 +1,6 @@
 import { vi } from 'vitest'
 
+if (typeof window !== 'undefined') {
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
@@ -18,3 +19,5 @@ Object.defineProperty(navigator, 'clipboard', {
   configurable: true,
   value: { writeText: vi.fn().mockResolvedValue(undefined) },
 })
+
+}

@@ -5,7 +5,7 @@
 <h1 align="center">dsh-antv-ava</h1>
 
 <p align="center">
-  Let DeepSeek Harness automatically present data-heavy answers as streaming narrative text, AntV charts, or a natural combination of both.
+  Present data conclusions and charts in DeepSeek Harness, with optional file uploads and computed analysis.
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/AntV_AVA-3.4.1-1677ff" alt="AntV AVA 3.4.1">
+  <img src="https://img.shields.io/badge/AVA_Runtime-4.0.0--beta.2-1677ff" alt="Optional AVA 4.0.0-beta.2 runtime">
   <img src="https://img.shields.io/badge/AntV_GPT--Vis-1.0.0-1677ff" alt="AntV GPT-Vis 1.0.0">
   <img src="https://img.shields.io/badge/streaming-supported-16a34a" alt="Streaming supported">
   <img src="https://img.shields.io/badge/theme-light%20%7C%20dark-8b5cf6" alt="Light and dark themes">
@@ -25,148 +25,128 @@
 ## Preview
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="dsh-antv-ava rendering data interpretation and an AntV chart inside a DSH conversation" width="100%">
+  <img src="https://raw.githubusercontent.com/HellowVirgil/dsh-antv-ava/main/docs/images/ava-preview.jpg" alt="Narrative text and AntV charts inside a DSH conversation" width="100%">
 </p>
 
-Narrative text and charts flow directly with the model reply instead of appearing in separate cards. Text renders phrase by phrase, while GPT-Vis charts appear as soon as usable data arrives and keep updating during generation.
-
-## Core features
-
-- Automatic presentation selection: the model chooses NTV, a chart, or both based on the question and data.
-- Streaming data interpretation: metrics, changes, shares, category details, and conclusions render phrase by phrase.
-- Streaming AntV charts: the model emits official GPT-Vis syntax, and complete data lines update the mounted chart before the answer finishes.
-- AVA insights: AVA inspects stable tabular results after generation and can surface significant trends, outliers, changes, shares, and correlations.
-- Conversation-native design: inherits DSH typography, font size, line height, color, width, and Markdown spacing.
-- Live theme adaptation: chart axes, labels, and grid lines update when switching between light and dark themes without a page refresh.
-- Semantic data expression: highlighted metrics, direction arrows, absolute changes, rates, contributions, and proportion micro charts.
-- Lazy loading: the AVA/GPT-Vis chart engine loads only when an answer contains a chart.
-- Safe parsing: source-size limits and blocking for executable markup, dangerous URLs, and private-network resources.
+Text and charts flow with the conversation. Supplied figures render progressively; file analysis executes queries first, then presents saved results, a data table, and calculation evidence.
 
 ## Installation
 
+| Component | Responsibility | Runtime |
+| --- | --- | --- |
+| `dsh-antv-ava` | Narrative, charts, tables and result replay | Node.js ≥20.11 |
+| Optional `dsh-antv-ava-runtime` | Session uploads, workspace files, AVA v4 / DuckDB queries and snapshots | Node.js ≥22.13 |
+
+For visualization of supplied numbers, install the base plugin:
+
 ```bash
-dsh plugin --profile web add dsh-antv-ava
+dsh plugin --profile web add dsh-antv-ava@0.3.0
 ```
 
-Restart `dsh web` and reload the page after installation. The plugin injects the required output contract automatically, so regular users do not need to install a separate Skill or write DSL by hand.
+To analyze pasted/uploaded files, also install the runtime:
+
+```bash
+dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releases/download/v0.3.0/dsh-antv-ava-runtime-0.1.0.tgz
+```
+
+The base package is published to npm. This runtime version is distributed as an asset of the same [GitHub Release](https://github.com/HellowVirgil/dsh-antv-ava/releases/tag/v0.3.0), not as a separate npm publication. It depends on the exact base protocol version; both plugins are enabled separately in the web profile.
+
+Tested with DSH `0.1.0-rc.8` and `0.2.1-rc.2`. Use `0.2.1-rc.2` for file upload support. Restart `dsh web` and refresh the browser after installation. On first access, open the complete login URL printed by DSH. AVA needs no additional model key: the existing DSH model plans the analysis.
 
 ## Usage
 
-Ask naturally after installation.
+**Supplied figures:**
 
-### Interpret data
+> Analyze quarterly revenue and plot the trend: Q1 128, Q2 164, Q3 191, Q4 226, all in thousands of USD.
 
-```text
-Interpret the following business data and provide concise, easy-to-scan conclusions:
-Total orders reached 198M this month, up 7.05% year over year…
-```
+**Pasted or uploaded Excel:**
 
-The model will usually return streaming NTV with emphasized metrics, changes, shares, and category conclusions.
+> Use AVA to analyze the sales.xlsx I uploaded. Sum revenue by product, create a column chart, and explain the result.
 
-### Interpret and visualize
+**A file in the current workspace:**
 
-```text
-Analyze the revenue change from Q1 to Q4 and choose an appropriate visualization:
-Q1 1.28M, Q2 1.64M, Q3 1.91M, Q4 2.26M.
-```
+> Use AVA to analyze tests/fixtures/sales.xlsx and sum revenue by product.
 
-When visual shape makes a trend or comparison easier to understand, the model combines narrative text with a chart.
+Relative paths resolve against the current DSH session workspace. Uploads are read directly without copying them into the project or a temporary directory. Only admitted file references from that conversation grant attachment access; ambiguous filenames require an explicit selection.
 
-### Generate only a chart
+The model chooses narrative, charts, or both. Ask for a chart only when desired. Normal users do not need to write the output protocol or install a separate skill.
 
-```text
-Plot the following data as a trend chart. Return only the chart: …
-```
+## Capabilities
 
-When explicitly requested, the model can return a chart without repeating the same information as narrative text.
+- **Streaming presentation:** complete narrative phrases appear progressively; inline charts update as complete data lines arrive.
+- **File analysis:** the optional runtime supports CSV, JSON and XLSX, schema/profile inspection, and read-only DuckDB SQL.
+- **Consistent results:** narrative values and charts bind to the same query result. Tables, pagination, CSV export and query inspection do not rerun analysis.
+- **History replay:** host snapshots survive dataset closure and runtime restarts.
+- **Themes and recovery:** DSH typography, light/dark themes, table fallback on chart failure, and independent chart retry.
+- **Optional statistics:** legacy inline charts retain explicit AVA 3.4.1 pattern computation. Loading, resizing and theme changes never automatically run it.
+- **Bounded execution:** isolated processes, cancellation/deadlines, input/result limits, and explicit truncation notices.
 
-## Automatic output selection
+Charts use GPT-Vis 1.0.0. Legacy inline syntax retains its existing chart coverage; the new JSON/result-binding path supports line, bar, column, pie, scatter, histogram, waterfall and table. See the [runtime guide](https://github.com/HellowVirgil/dsh-antv-ava/blob/v0.3.0/runtime/README.md) for limits, configuration, storage and access rules.
 
-| Content | Typical result |
-| --- | --- |
-| KPIs, period-over-period changes, shares, category breakdowns, and conclusions | NTV |
-| Trends, comparisons, distributions, rankings, or compositions benefit from shape | NTV + Chart |
-| The user explicitly requests only a chart, or narrative adds no value | Chart |
+The current execution path uses the DSH Agent to write queries and AVA to compute them. Additional model-driven `analyze/recommend/suggest`, remote databases, multiple sources and Python execution are not integrated yet.
 
-This selection is automatic; users do not need to understand the internal format.
+## Output protocol and compatibility
 
-## Supported data expression
-
-NTV supports:
-
-- Primary and secondary metrics and dimension values
-- Time descriptions and trend conclusions
-- Absolute changes and change rates
-- Shares, contributions, and inline proportion micro charts
-- Headlines, heading levels 1–6, paragraphs, bullets, sections, and dividers
-
-Charts use GPT-Vis syntax and support:
-
-- Line, area, column, bar, pie, scatter, radar, funnel, waterfall, and dual-axis charts
-- Histograms, boxplots, violin plots, treemaps, Sankey diagrams, Venn diagrams, liquid charts, word clouds, and tables
-- Additional GPT-Vis relationship diagrams accepted by the renderer when they are useful for data interpretation
-
-## Optional Skill installation
-
-The plugin works on its own. Install the bundled Skill only when the agent environment discovers `~/.agents/skills` and complex data tasks need stricter guidance for fact preservation and presentation selection.
-
-```bash
-mkdir -p ~/.agents/skills/antv-ava
-cp SKILL.md ~/.agents/skills/antv-ava/SKILL.md
-```
-
-## Advanced: unified AVA format
-
-The model can emit `narrative`, `chart`, or both inside one `ava` fence:
+Existing `ava`, `ava ntv`, and `ava chart` fences remain supported:
 
 ````markdown
 ```ava
 ava
 language en-US
 narrative
-  headline Quarterly revenue continued to grow
+  headline Quarterly revenue increased
   paragraph
     text Q4 revenue reached
-    metric-value 2.26M
-    text , up from Q1 by
-    ratio positive 76.6%
+    metric-value 226k USD
 chart
-  vis line
+  vis column
   data
-    - time Q1
-      value 1.28
-    - time Q4
-      value 2.26
-  title "Quarterly revenue trend"
-  axisXTitle Quarter
-  axisYTitle "Revenue (M)"
+    - category Q1
+      value 128
+    - category Q4
+      value 226
+  title "Quarterly revenue"
+  axisYTitle "Revenue (thousand USD)"
 ```
 ````
 
-## Scope
+Additional entry points:
 
-Use the plugin for evidence-backed KPIs, business analysis, trends, shares, rankings, and category breakdowns. It does not invent values for visualization and never executes arbitrary HTML, SVG, or scripts emitted by the model.
+| Content | Purpose |
+| --- | --- |
+| `ava json` followed by JSON | GPT-Vis config or AVA v4 `{ chartType, config }`; HTML is never executed |
+| `ava answer` followed by JSON | Plugin-owned `schemaVersion: 1` document with results, value references and views |
+| `ava result <id>` | Replay a host-generated presentation snapshot; normally emitted directly from a tool result |
 
-Processes, hierarchies, and roadmaps without meaningful numeric structure are better suited to an infographic plugin.
+Inline supplied snapshots are marked as having unverified execution provenance. When DSH 0.2 hides unknown language names behind a generic code-block banner, the compatibility adapter validates the AVA content before taking over. Explicit non-AVA language hints remain authoritative.
 
-## Install from source
+## Source development
 
 ```bash
 git clone https://github.com/HellowVirgil/dsh-antv-ava.git
 cd dsh-antv-ava
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run check
 dsh plugin --profile web add "link:$PWD"
+dsh plugin --profile web add "link:$PWD/runtime"
+pnpm dev
 ```
 
-## Development
+The preview executes real AVA queries on synthetic data, closes the dataset, and replays the saved result.
 
 ```bash
-pnpm test
-pnpm build
 pnpm run verify:pack
+pnpm run pack:runtime
+pnpm run verify:dsh
+pnpm run verify:dsh-uploads
 ```
+
+The last two checks require an installed DSH; upload verification requires its file-attachment capability. Set `AVA_TEST_DSH_BINARY` to select a DSH executable. Checks use isolated contexts and leave the existing web profile unchanged. The bundled [SKILL.md](./SKILL.md) is optional for skill-aware agents.
+
+## Publishing
+
+GitHub Release is the entry point. `publish.yml` installs, checks and packs the immutable release tag, attaches the runtime archive and SHA256SUMS, then publishes the base package through npm Trusted Publishing. See [AGENTS.md](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/AGENTS.md).
 
 ## License
 
-MIT. AntV AVA and AntV GPT-Vis are also licensed under MIT.
+MIT. AntV AVA and AntV GPT-Vis are also MIT licensed.

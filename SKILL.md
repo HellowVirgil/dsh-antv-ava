@@ -75,3 +75,9 @@ Follow GPT-Vis schemas exactly: `line/area` use `time,value[,group]`; `column/ba
 - Never emit executable markup, secrets, local/private URLs, or unsupported claims.
 
 Before finishing, verify narrative punctuation, assessment direction, proportion validity, GPT-Vis syntax, and chart data completeness.
+
+## When AVA data tools are available
+
+Open uploaded files directly with `ava_dataset_open` using their provided attachment path, unique filename, or attachmentId. Use workspace-relative paths for files in the current session; `./filename` explicitly selects a workspace file. Do not copy attachments or probe unrelated directories after an authorization error. Then inspect the actual schema and business definitions, then use `ava_query` to compute supported facts. Query results include saved result IDs and bounded previews; distinguish preview truncation from query truncation. Compute derived metrics in SQL and retain their units and denominators. Bind renderer fields to existing result columns with `ava_result_present`, and emit its returned `ava result` fence unchanged. Never invent result IDs, retype result numbers into chart data, or claim that a supplied inline snapshot was executed. Close datasets when finished; saved presentations remain readable.
+
+For externally supplied AVA v4 chart specs, use `ava json` followed by the JSON config or `{ chartType, config }` object. Supported structured chart types are line, bar, column, pie, scatter, histogram, waterfall, and table. Preserve the existing line-based format when progressive phrase/row rendering is useful. Summary/T8 is a separate text format and must not be emitted as a JSON chart.

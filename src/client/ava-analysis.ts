@@ -12,6 +12,7 @@ export interface AvaPattern {
 export interface AvaAnalysis {
   fields: AvaField[]
   patterns: AvaPattern[]
+  status?: 'complete' | 'unsupported'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,9 +75,9 @@ export function analyzeAvaDocument(document: AvaDocument): AvaAnalysis {
       })
       patterns = result.insights.flatMap(insight => insight.patterns).slice(0, 4) as unknown as AvaPattern[]
     } catch (reason) {
-      console.warn('[dsh-antv-ava] insight extraction skipped:', reason)
+      throw new Error('统计分析失败，请重试。', { cause: reason })
     }
   }
 
-  return { fields, patterns }
+  return { fields, patterns, status: data.length >= 3 && dimensions.length > 0 && measures.length > 0 ? 'complete' : 'unsupported' }
 }

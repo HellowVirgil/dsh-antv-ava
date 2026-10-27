@@ -9,7 +9,7 @@ import type {
   PhraseSpec,
   SectionSpec,
   TextParagraphSpec,
-} from '@antv/ava'
+} from '../protocol/narrative.ts'
 import type { AvaLanguage, AvaNtvDocument } from './ava-source.ts'
 
 export interface NtvBlockProps {

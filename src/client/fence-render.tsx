@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { CodeBlock } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AvaBlock } from './AvaBlock.tsx'
-import { parseAvaSource } from './ava-source.ts'
+import { parseAvaSource, type AvaParseResult } from './ava-source.ts'
 
 export interface AvaFenceContext {
   readonly source?: {
@@ -54,15 +54,15 @@ function FenceFallback({ raw, reason }: { raw: string; reason?: string | undefin
   )
 }
 
-export function renderAvaFenceNode(raw: string, key: Key, settled: boolean): ReactNode | null {
-  const parsed = parseAvaSource(raw, settled)
+export function renderAvaFenceNode(raw: string, key: Key, settled: boolean, supplied?: AvaParseResult): ReactNode | null {
+  const parsed = supplied ?? parseAvaSource(raw, settled)
   if (!parsed.ok) {
     if (!settled) return null
     return <FenceFallback key={key} raw={raw} reason={parsed.reason} />
   }
   return (
     <RenderBoundary key={key}>
-      <AvaBlock source={raw} settled={settled} />
+      <AvaBlock source={raw} settled={settled} parsed={parsed} />
     </RenderBoundary>
   )
 }
@@ -73,7 +73,7 @@ export function renderAvaFence(raw: string, key: Key, context?: AvaFenceContext)
   if (!parsed.ok) return <FenceFallback key={key} raw={raw} reason={parsed.reason} />
   return (
     <RenderBoundary key={context?.source?.id ?? key}>
-      <AvaBlock source={raw} settled={settled ? true : undefined} />
+      <AvaBlock source={raw} settled={settled ? true : undefined} parsed={parsed} parsedSettled={settled} />
     </RenderBoundary>
   )
 }
