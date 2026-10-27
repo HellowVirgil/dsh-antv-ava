@@ -7,3 +7,6 @@ minimumReleaseAge: 0
 
 allowBuilds:
   esbuild: true
+  # Optional SSH accelerators are unused by the local DuckDB/file runtime.
+  cpu-features: false
+  ssh2: false
