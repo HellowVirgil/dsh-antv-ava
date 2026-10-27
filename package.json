@@ -1,6 +1,6 @@
 {
   "name": "dsh-antv-ava",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "AntV AVA and GPT-Vis plugin for DeepSeek Harness: stream data-heavy answers as narrative text, charts, or both.",
   "author": "HellowVirgil",
   "repository": {

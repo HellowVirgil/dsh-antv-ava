@@ -40,18 +40,18 @@
 只需要把已有数字画成图表时，安装主插件：
 
 ```bash
-dsh plugin --profile web add dsh-antv-ava@0.3.1 --ignore-scripts
+dsh plugin --profile web add dsh-antv-ava@0.3.2 --ignore-scripts
 ```
 
 需要粘贴/上传文件并实际分析时，再安装运行时：
 
 ```bash
-dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releases/download/v0.3.1/dsh-antv-ava-runtime-0.1.1.tgz --ignore-scripts
+dsh plugin --profile web add dsh-antv-ava-runtime@0.1.2 --ignore-scripts
 ```
 
 两个分发包都已完成构建。`--ignore-scripts` 跳过 AVA 间接依赖中未使用的 SSH 原生优化构建，避免 pnpm 11 因未声明的构建脚本中止安装。
 
-本版主包通过 npm 分发，runtime 通过同一 [GitHub Release](https://github.com/HellowVirgil/dsh-antv-ava/releases/tag/v0.3.1) 的附件分发，未单独发布到 npm。runtime 依赖同版本主包的协议；两个插件分别在 web profile 中启用。
+两个包都通过 npm 分发，由同一 [GitHub Release](https://github.com/HellowVirgil/dsh-antv-ava/releases/tag/v0.3.2) 触发，分别使用自己的 Trusted Publisher。runtime 依赖同版本主包的协议；两个插件分别在 web profile 中启用。Release 同时保留 runtime 压缩包和 SHA256SUMS，供需要时使用。
 
 已验证 DSH `0.1.0-rc.8` 和 `0.2.1-rc.2`；粘贴/上传文件使用已具备文件附件能力的 `0.2.1-rc.2`。安装后重启 `dsh web` 并刷新页面。首次访问请使用启动时打印的完整登录地址。AVA 不需要额外模型密钥，分析规划使用 DSH 已配置的模型。
 
@@ -83,7 +83,7 @@ dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releas
 - **可选统计**：旧内联图表保留 AVA 3.4.1 的统计模式计算，需手动触发；主题切换、缩放和消息加载不会自动分析。
 - **资源控制**：独立计算进程、取消与超时清理、输入大小和查询结果限制；截断结果明确标识。
 
-图表使用 GPT-Vis 1.0.0。旧内联格式保留已有图类型；新的 JSON/结果绑定入口先支持 line、bar、column、pie、scatter、histogram、waterfall、table。上传支持与限制、目录配置、存储和权限说明见 [runtime 文档](https://github.com/HellowVirgil/dsh-antv-ava/blob/v0.3.1/runtime/README.md)。
+图表使用 GPT-Vis 1.0.0。旧内联格式保留已有图类型；新的 JSON/结果绑定入口先支持 line、bar、column、pie、scatter、histogram、waterfall、table。上传支持与限制、目录配置、存储和权限说明见 [runtime 文档](https://github.com/HellowVirgil/dsh-antv-ava/blob/v0.3.2/runtime/README.md)。
 
 当前采用 DSH Agent 组织查询、AVA 执行计算的方式。额外模型驱动的 `analyze/recommend/suggest`、远程数据库、多数据源和 Python 引擎尚未接入。
 
@@ -147,7 +147,7 @@ pnpm run verify:dsh-uploads
 
 ## 发布
 
-GitHub Release 是入口。`publish.yml` 从同一个不可变 tag 安装、检查和打包，附加 runtime 压缩包与 SHA256SUMS，再通过 npm Trusted Publishing 发布主包。流程见 [AGENTS.md](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/AGENTS.md)。
+GitHub Release 是入口。`publish.yml` 从同一个不可变 tag 安装、检查和打包，附加 runtime 压缩包与 SHA256SUMS，再按主包、runtime 的顺序通过各自的 npm Trusted Publisher 发布。流程见 [AGENTS.md](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/AGENTS.md)。
 
 ## License
 

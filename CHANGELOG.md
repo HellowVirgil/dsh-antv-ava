@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2 — 2026-10-27
+
+- Publish runtime 0.1.2 to npm through its own Trusted Publisher in the same repository and release workflow.
+- Validate runtime artifact identity, checksum, public registry settings and exact base dependency before publishing.
+- Run runtime publishing as a separate job after the base package is visible, allowing failed runtime jobs to be retried independently.
+- Keep the existing base-protocol dependency and two-plugin usage model; retain GitHub runtime assets as an alternative distribution.
+
+
 ## 0.3.1 — 2026-10-27
 
 - Correct the prebuilt-package installation commands to skip unused optional SSH build scripts that pnpm 11 otherwise refuses.

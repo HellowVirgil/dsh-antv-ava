@@ -40,18 +40,18 @@ Text and charts flow with the conversation. Supplied figures render progressivel
 For visualization of supplied numbers, install the base plugin:
 
 ```bash
-dsh plugin --profile web add dsh-antv-ava@0.3.1 --ignore-scripts
+dsh plugin --profile web add dsh-antv-ava@0.3.2 --ignore-scripts
 ```
 
 To analyze pasted/uploaded files, also install the runtime:
 
 ```bash
-dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releases/download/v0.3.1/dsh-antv-ava-runtime-0.1.1.tgz --ignore-scripts
+dsh plugin --profile web add dsh-antv-ava-runtime@0.1.2 --ignore-scripts
 ```
 
 Both distributions are prebuilt. `--ignore-scripts` skips unused optional SSH accelerator builds pulled in by AVA and avoids pnpm 11 refusing an undeclared build.
 
-The base package is published to npm. This runtime version is distributed as an asset of the same [GitHub Release](https://github.com/HellowVirgil/dsh-antv-ava/releases/tag/v0.3.1), not as a separate npm publication. It depends on the exact base protocol version; both plugins are enabled separately in the web profile.
+Both packages are published to npm from the same [GitHub Release](https://github.com/HellowVirgil/dsh-antv-ava/releases/tag/v0.3.2), using separate package-level Trusted Publishers. The runtime depends on the exact base protocol version; both plugins are enabled separately in the web profile. The release also retains the runtime archive and SHA256SUMS as an alternative distribution.
 
 Tested with DSH `0.1.0-rc.8` and `0.2.1-rc.2`. Use `0.2.1-rc.2` for file upload support. Restart `dsh web` and refresh the browser after installation. On first access, open the complete login URL printed by DSH. AVA needs no additional model key: the existing DSH model plans the analysis.
 
@@ -83,7 +83,7 @@ The model chooses narrative, charts, or both. Ask for a chart only when desired.
 - **Optional statistics:** legacy inline charts retain explicit AVA 3.4.1 pattern computation. Loading, resizing and theme changes never automatically run it.
 - **Bounded execution:** isolated processes, cancellation/deadlines, input/result limits, and explicit truncation notices.
 
-Charts use GPT-Vis 1.0.0. Legacy inline syntax retains its existing chart coverage; the new JSON/result-binding path supports line, bar, column, pie, scatter, histogram, waterfall and table. See the [runtime guide](https://github.com/HellowVirgil/dsh-antv-ava/blob/v0.3.1/runtime/README.md) for limits, configuration, storage and access rules.
+Charts use GPT-Vis 1.0.0. Legacy inline syntax retains its existing chart coverage; the new JSON/result-binding path supports line, bar, column, pie, scatter, histogram, waterfall and table. See the [runtime guide](https://github.com/HellowVirgil/dsh-antv-ava/blob/v0.3.2/runtime/README.md) for limits, configuration, storage and access rules.
 
 The current execution path uses the DSH Agent to write queries and AVA to compute them. Additional model-driven `analyze/recommend/suggest`, remote databases, multiple sources and Python execution are not integrated yet.
 
@@ -147,7 +147,7 @@ The last two checks require an installed DSH; upload verification requires its f
 
 ## Publishing
 
-GitHub Release is the entry point. `publish.yml` installs, checks and packs the immutable release tag, attaches the runtime archive and SHA256SUMS, then publishes the base package through npm Trusted Publishing. See [AGENTS.md](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/AGENTS.md).
+GitHub Release is the entry point. `publish.yml` installs, checks and packs the immutable release tag, attaches the runtime archive and SHA256SUMS, then publishes the base package and runtime through their separate npm Trusted Publishers. See [AGENTS.md](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/AGENTS.md).
 
 ## License
 

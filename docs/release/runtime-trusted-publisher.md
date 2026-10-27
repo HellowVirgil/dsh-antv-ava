@@ -1,6 +1,6 @@
 # Runtime npm Trusted Publisher
 
-当前状态：仓库侧已准备双包发布流程；npm 端的 runtime 包和信任关系仍需建立。现有已发布版本继续使用 README 中的 GitHub Release 安装包。两个插件的依赖和使用方式保持不变。
+当前状态：2026-10-27 已为 runtime 创建独立的 npm Trusted Publisher，仓库变量已设为 `enabled`。首次正式发布目标为 runtime `0.1.2` / 主包 `0.3.2`，由 GitHub Release/OIDC 验证。两个插件的依赖和使用方式保持不变。
 
 ## npm 端配置
 
@@ -20,7 +20,7 @@
 
 网页入口：[runtime 包设置](https://www.npmjs.com/package/dsh-antv-ava-runtime/access)。
 
-如果使用 CLI，需要 npm ≥11.15.0。以下命令只配置授权，不发布代码；在包已存在且维护者已登录后执行：
+如果使用 CLI，需要 npm ≥11.15.0。以下命令只配置授权，不发布代码；仅在需要恢复或新建配置时，由已登录维护者执行。已有配置无需重复创建：
 
 ```bash
 npm exec --yes --package npm@11.21.1 -- npm trust github dsh-antv-ava-runtime \
@@ -33,14 +33,14 @@ npm exec --yes --package npm@11.21.1 -- npm trust github dsh-antv-ava-runtime \
 随后读取并核对设置：
 
 ```bash
-npm exec --yes --package npm@11.21.1 -- npm trust list dsh-antv-ava-runtime --json
+npm exec --yes --package npm@11.21.1 -- npm trust list dsh-antv-ava-runtime
 ```
 
 密码、OTP 和 token 由维护者在 npm 的交互流程中处理，不写入脚本、命令参数、日志或 commit。
 
 ## 首次建包前置条件
 
-npm 官方的 `npm trust` 文档明确要求包已存在。当前 runtime 在 npm 上返回 404，因此直接创建 Trusted Publisher 的条件尚未满足；GitHub Release 附件不会创建 npm 包。
+npm 官方的 `npm trust` 文档明确要求包已存在。这项前置条件已通过维护者明确授权的一次 staged 建包满足：npm 创建了 `0.0.0-stage` 占位版本，初始化用的 `0.1.1` 候选未批准上线。GitHub Release 附件本身不会创建 npm 包。
 
 官方 staged publishing 可以为新包建立公开的 `0.0.0-stage` 占位版本，但这也是一次注册表写入，且需要有效 npm 身份。它不等于已验证的 OIDC 发布，也不能被当作绕过本仓库发布规则的办法。
 
@@ -65,7 +65,7 @@ gh variable set NPM_RUNTIME_TRUSTED_PUBLISHER --body enabled --repo HellowVirgil
 
 新信任配置需要在两天内完成首次成功发布以绑定仓库身份。应先准备下一个未使用的主包/runtime 版本，等 CI 通过后创建新的 Release；不要修改已发布 tag、重打已有 runtime 附件版本或只修改远端设置后无限期闲置。
 
-首次 OIDC 发布成功后，再把 README 的 runtime 安装说明切换到 npm 包名。配置未完成时不要声称 runtime 已在 npm 可用。
+首次 OIDC 发布验证通过后，runtime 可按 README 中的 npm 命令安装。任何初始化用的 staged 候选都不应在本地批准为正式版本；正式版本由 Release 工作流发布。
 
 ## 官方依据
 
