@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 — 2026-10-27
+
+- Correct the prebuilt-package installation commands to skip unused optional SSH build scripts that pnpm 11 otherwise refuses.
+- Ship runtime 0.1.1 as a release asset pinned to base package 0.3.1.
+
+
 ## 0.3.0 — 2026-10-27
 
 ### Added

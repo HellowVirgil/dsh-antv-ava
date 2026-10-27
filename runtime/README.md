@@ -2,18 +2,18 @@
 
 可选的 DSH 宿主分析插件，使用 AVA `4.0.0-beta.2` 和独立 DuckDB 进程。主插件负责展示；不安装本包时，旧围栏和 JSON 图表仍能使用。
 
-本包作为 `v0.3.0` GitHub Release 的安装附件交付，未单独发布到 npm。版本为 `0.1.0`，依赖主包 `0.3.0`。运行要求 Node.js ≥22.13。无需额外模型密钥：DSH Agent 编写查询，AVA 执行确定性计算。
+本包作为 `v0.3.1` GitHub Release 的安装附件交付，未单独发布到 npm。版本为 `0.1.1`，依赖主包 `0.3.1`。运行要求 Node.js ≥22.13。无需额外模型密钥：DSH Agent 编写查询，AVA 执行确定性计算。
 
 ## 安装与配置
 
 安装发布版本：
 
 ```bash
-dsh plugin --profile web add dsh-antv-ava@0.3.0
-dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releases/download/v0.3.0/dsh-antv-ava-runtime-0.1.0.tgz
+dsh plugin --profile web add dsh-antv-ava@0.3.1 --ignore-scripts
+dsh plugin --profile web add https://github.com/HellowVirgil/dsh-antv-ava/releases/download/v0.3.1/dsh-antv-ava-runtime-0.1.1.tgz --ignore-scripts
 ```
 
-两个包分别启用。Release 同时提供 SHA256SUMS；压缩包由 `publish.yml` 从发布 tag 构建。
+两个包已经预编译，使用 `--ignore-scripts` 跳过当前运行时不使用的 SSH 原生优化脚本。两个包分别启用。Release 同时提供 SHA256SUMS；压缩包由 `publish.yml` 从发布 tag 构建。
 
 从源码开发时，在仓库根目录运行：
 
