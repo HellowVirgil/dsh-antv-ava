@@ -1,7 +1,6 @@
 {
   "name": "dsh-antv-ava-runtime",
   "version": "0.1.1",
-  "private": true,
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -52,6 +51,10 @@
     }
   },
   "description": "Optional AVA v4 file analysis tools for dsh-antv-ava: session-scoped uploads, DuckDB queries and durable results.",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "license": "MIT",
   "author": "HellowVirgil",
   "repository": {

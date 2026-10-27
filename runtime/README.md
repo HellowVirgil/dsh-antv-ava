@@ -4,6 +4,8 @@
 
 本包作为 `v0.3.1` GitHub Release 的安装附件交付，未单独发布到 npm。版本为 `0.1.1`，依赖主包 `0.3.1`。运行要求 Node.js ≥22.13。无需额外模型密钥：DSH Agent 编写查询，AVA 执行确定性计算。
 
+独立 npm 发布的仓库侧流程已准备，npm 端尚待首次建包和 Trusted Publisher 配置；现有安装命令继续有效。维护步骤见 [runtime 可信发布配置](https://github.com/HellowVirgil/dsh-antv-ava/blob/main/docs/release/runtime-trusted-publisher.md)。
+
 ## 安装与配置
 
 安装发布版本：

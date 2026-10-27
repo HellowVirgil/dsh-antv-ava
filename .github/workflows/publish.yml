@@ -86,6 +86,13 @@ jobs:
       - name: Pack optional runtime from the release commit
         run: pnpm run pack:runtime
 
+      - name: Verify runtime npm metadata before publishing either package
+        if: vars.NPM_RUNTIME_TRUSTED_PUBLISHER == 'enabled'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: node scripts/check-runtime-publish.mjs
+
       - name: Attach immutable runtime distribution
         env:
           GH_TOKEN: ${{ github.token }}
@@ -96,3 +103,65 @@ jobs:
         env:
           NPM_TAG: ${{ steps.release.outputs.npm_tag }}
         run: npm publish --access public --provenance --tag "$NPM_TAG"
+
+  publish-runtime:
+    name: Publish runtime with its own npm trust
+    needs: publish
+    if: vars.NPM_RUNTIME_TRUSTED_PUBLISHER == 'enabled'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout the same immutable release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
+
+      - name: Setup npm with Trusted Publishing support
+        run: npm install --global npm@11.7.0
+
+      - name: Download the runtime artifact built by this release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          runtime_archive="$(node -p "const p = require('./runtime/package.json'); p.name + '-' + p.version + '.tgz'")"
+          mkdir -p .release-artifacts
+          gh release download "$RELEASE_TAG" --pattern "$runtime_archive" --pattern SHA256SUMS --dir .release-artifacts
+
+      - name: Verify runtime version, dependency and checksum
+        id: runtime
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: node scripts/check-runtime-publish.mjs
+
+      - name: Publish runtime through its own OIDC relationship
+        env:
+          RUNTIME_ARCHIVE: ${{ steps.runtime.outputs.archive }}
+          NPM_TAG: ${{ steps.runtime.outputs.npm_tag }}
+        run: |
+          base_spec="$(node -p "const p = require('./package.json'); p.name + '@' + p.version")"
+          base_ready=false
+          for attempt in $(seq 1 20); do
+            if npm view "$base_spec" version --prefer-online --fetch-retries=0 --fetch-timeout=10000 >/dev/null 2>&1; then
+              base_ready=true
+              break
+            fi
+            sleep 15
+          done
+          if [ "$base_ready" != true ]; then
+            echo "The base package is not yet visible on npm; retry this failed runtime job later." >&2
+            exit 1
+          fi
+          npm publish "$RUNTIME_ARCHIVE" --access public --provenance --tag "$NPM_TAG"

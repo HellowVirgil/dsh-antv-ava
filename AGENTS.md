@@ -18,6 +18,10 @@
 
 Workflow 文件名或 Environment 如有变更，必须同步更新 npm 设置。GitHub 仓库中的 `npm` Environment 可按需要配置 required reviewers，OIDC 发布不需要 npm token 或 OTP。
 
+`dsh-antv-ava-runtime` 需要在它自己的 npm 包设置中单独配置同一组 GitHub 字段。主包的信任关系不授予 runtime 权限。首次建包、2FA 和启用步骤见 `docs/release/runtime-trusted-publisher.md`；配置未完成时，仓库变量 `NPM_RUNTIME_TRUSTED_PUBLISHER` 不得设为 `enabled`。不要擅自突破本文件的发布入口和凭据约束来初始化新包。
+
+启用后，`publish.yml` 的独立 runtime job 在主包成功后，校验并发布同一 Release 的 runtime 压缩包。失败时重跑失败 job，保留已经成功发布的版本。
+
 ### 1. 准备版本
 
 从最新的 `main` 开始，确认目标版本尚未发布：
